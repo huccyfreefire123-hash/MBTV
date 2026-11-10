@@ -199,7 +199,7 @@ fun TopControls(left: @Composable () -> Unit, right: @Composable () -> Unit, foc
     Box(
         Modifier
             .fillMaxWidth()
-            .background(Brush.verticalGradient(0f to Color(0xE616171F), 0.55f to Color(0x9916171F), 1f to Color.Transparent))
+            .background(Brush.verticalGradient(0f to Color(0xE6000000), 0.55f to Color(0x99000000), 1f to Color.Transparent))
     ) {
         Row(
             Modifier.fillMaxWidth().statusBarsPadding().padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 16.dp),

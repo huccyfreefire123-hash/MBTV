@@ -175,7 +175,7 @@ fun MultiviewScreen(vm: AppViewModel, onBack: () -> Unit) {
             modifier
                 .padding(if (isFull) 0.dp else 1.dp)
                 .then(if (selected) Modifier.border(2.dp, Color.White) else Modifier)
-                .background(Color(0xFF0D0E12)),
+                .background(Color.Black),
         ) {
             if (item != null) {
                 AndroidView(
@@ -335,7 +335,7 @@ private fun ChannelPicker(
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Column(
             Modifier.fillMaxWidth(0.7f).fillMaxHeight(0.92f).clip(RoundedCornerShape(16.dp))
-                .background(Color(0xFF1C1D24)).padding(16.dp),
+                .background(Color(0xFF141414)).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text("Escolher canal", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)

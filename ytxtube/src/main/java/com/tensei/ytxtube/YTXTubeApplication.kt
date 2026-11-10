@@ -68,6 +68,8 @@ class YTXTubeApplication : Application(), ImageLoaderFactory {
 
     override fun newImageLoader(): ImageLoader = ImageLoader.Builder(this)
         .crossfade(180)
+        // Posters from a TMDB link come in the size the screen needs (see ImageQuality.kt).
+        .components { add(SharpImages()) }
         .memoryCache { MemoryCache.Builder(this).maxSizePercent(0.25).build() }
         // Posters and channel logos stay on disk between launches instead of downloading again.
         .diskCache {

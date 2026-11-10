@@ -78,13 +78,13 @@ import java.util.Locale
 
 // ---------- Definições ----------
 
-/** Colours of the settings screen: flat, without gradients, glow or strong shadows. */
+/** Colours of the settings screen: flat AMOLED, without gradients, glow or strong shadows. */
 private object SettingsColors {
-    val background = Color(0xFF0F1115)
-    val block = Color(0xFF181B21)
-    val divider = Color(0xFF242830)
-    val text = Color(0xFFE9EBEE)
-    val textSecondary = Color(0xFF8C929C)
+    val background = Color.Black
+    val block = Color(0xFF141414)
+    val divider = Color(0xFF262626)
+    val text = Color(0xFFF5F5F5)
+    val textSecondary = Color(0xFF8E8E8E)
     val accent = Color(0xFF179EF8)
     val danger = Color(0xFFE5484D)
     val warning = Color(0xFFF2A93B)

@@ -227,7 +227,7 @@ fun HomeScreen(
             Box(Modifier.fillMaxWidth().padding(top = 28.dp), contentAlignment = Alignment.Center) {
                 Text(
                     "Editar", color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Medium,
-                    modifier = Modifier.clip(RoundedCornerShape(22.dp)).background(Color(0xFF2A2B33))
+                    modifier = Modifier.clip(RoundedCornerShape(22.dp)).background(Color(0xFF1E1E1E))
                         .clickable { editing = true }.padding(horizontal = 34.dp, vertical = 12.dp),
                 )
             }

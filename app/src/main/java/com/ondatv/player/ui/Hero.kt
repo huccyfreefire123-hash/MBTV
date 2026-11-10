@@ -201,8 +201,8 @@ private fun HeroPage(item: Item, d: Details?) {
                 Brush.verticalGradient(
                     0f to Color(0x59000000),
                     0.22f to Color.Transparent,
-                    0.5f to Color(0x4016171F),
-                    0.78f to Color(0xD916171F),
+                    0.5f to Color(0x40000000),
+                    0.78f to Color(0xD9000000),
                     1f to Onda.heroBg,
                 )
             )

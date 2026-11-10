@@ -296,7 +296,7 @@ fun MatchCard(m: Match, now: Long, teams: Set<String>, play: (PlayRequest) -> Un
         modifier
             .shadow(10.dp, CardShape)
             .clip(CardShape)
-            .background(Brush.linearGradient(listOf(Color(0xFF30323C), Color(0xFF22232B), Color(0xFF1A1B22))))
+            .background(Brush.linearGradient(listOf(Color(0xFF2B2B2B), Color(0xFF1A1A1A), Color(0xFF0F0F0F))))
             .border(1.dp, Color.White.copy(alpha = 0.09f), CardShape),
     ) {
         Row(
@@ -321,7 +321,7 @@ fun MatchCard(m: Match, now: Long, teams: Set<String>, play: (PlayRequest) -> Un
             TeamColumn(m.home, Sports.follows(m.copy(away = ""), teams), 60.dp, 14, false, Modifier.weight(1f))
             Box(
                 Modifier.padding(top = 12.dp).size(44.dp).clip(CircleShape)
-                    .background(Brush.radialGradient(listOf(Color(0xFF3B3E4A), Color(0xFF1A1B22))))
+                    .background(Brush.radialGradient(listOf(Color(0xFF353535), Color(0xFF0F0F0F))))
                     .border(1.dp, Color.White.copy(alpha = 0.16f), CircleShape),
                 contentAlignment = Alignment.Center,
             ) { Text("VS", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold) }
@@ -444,7 +444,7 @@ fun HomeMatchCard(m: Match, now: Long, play: (PlayRequest) -> Unit, modifier: Mo
         Column(Modifier.fillMaxWidth().padding(top = 12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             if (live) LivePill("AO VIVO · " + clock(m.start)) else Text(
                 dayLabel(m.start) + " · " + clock(m.start), color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold,
-                modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(Color(0x990A0E18))
+                modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(Color(0x99000000))
                     .border(1.dp, Color.White.copy(alpha = 0.18f), RoundedCornerShape(10.dp))
                     .padding(horizontal = 12.dp, vertical = 5.dp),
             )
@@ -468,7 +468,7 @@ fun HomeMatchCard(m: Match, now: Long, play: (PlayRequest) -> Unit, modifier: Mo
         if (m.channels.isNotEmpty()) {
             Row(
                 Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(40.dp)
-                    .background(Color(0xB8080C16))
+                    .background(Color(0xB8000000))
                     .drawBehind { drawLine(GlowBlue.copy(alpha = 0.35f), Offset(0f, 0f), Offset(size.width, 0f), 1.dp.toPx()) }
                     .horizontalScroll(rememberScrollState()),
                 verticalAlignment = Alignment.CenterVertically,

@@ -61,7 +61,7 @@ fun NextEpisodeButton(label: String?, secondsLeft: Int, onClick: () -> Unit) {
             Modifier
                 .widthIn(max = 320.dp)
                 .clip(shape)
-                .background(Color(0xD91C1D24))
+                .background(Color(0xD9141414))
                 .border(if (focused) 2.dp else 1.dp, if (focused) Color.White else Color(0x40FFFFFF), shape)
                 .focusRequester(focus)
                 .clickable(interactionSource = interaction, indication = null, onClick = onClick)

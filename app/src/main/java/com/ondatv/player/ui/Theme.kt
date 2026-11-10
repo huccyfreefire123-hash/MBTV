@@ -8,25 +8,28 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 
-/** Colours measured from the reference screenshots. */
+/**
+ * The MBTV AMOLED palette: pure black with neutral greys (the same surfaces as the MBTV screen,
+ * see ytxtube/Theme.kt), so the whole app looks like one. The gradients stay, now grey to black.
+ */
 object Onda {
-    // Screen behind lists: slate blue at the top fading to near black.
-    val bgTop = Color(0xFF5B7284)
-    val bgMid = Color(0xFF27324A)
-    val bgBottom = Color(0xFF0B0C14)
+    // Screen behind lists: grey at the top fading to pure black.
+    val bgTop = Color(0xFF262626)
+    val bgMid = Color(0xFF0F0F0F)
+    val bgBottom = Color.Black
 
     // Screen behind the large banner screens.
-    val heroBg = Color(0xFF16171F)
+    val heroBg = Color.Black
 
     // Frosted controls.
     val glass = Color(0x33FFFFFF)
     val glassBorder = Color(0x4DFFFFFF)
-    val bar = Color(0xEB2A2C34)
+    val bar = Color(0xEB141414)
     val barBorder = Color(0x26FFFFFF)
     val barSelected = Color(0x29FFFFFF)
 
-    val card = Color(0xFF2A2B33)
-    val chip = Color(0xCC1E1F25)
+    val card = Color(0xFF141414)
+    val chip = Color(0xCC0C0C0C)
     val divider = Color(0x1FFFFFFF)
 
     val text = Color.White
@@ -45,13 +48,18 @@ private val scheme = darkColorScheme(
     primary = Color.White,
     onPrimary = Color.Black,
     secondary = Onda.gold,
-    background = Onda.heroBg,
-    surface = Color(0xFF22232B),
-    surfaceVariant = Onda.card,
-    surfaceContainer = Color(0xFF22232B),
-    surfaceContainerHigh = Color(0xFF2A2B33),
-    onSurface = Color.White,
+    background = Color.Black,
+    surface = Color.Black,
+    surfaceVariant = Color(0xFF141414),
+    surfaceContainerLowest = Color.Black,
+    surfaceContainerLow = Color(0xFF050505),
+    surfaceContainer = Color(0xFF0C0C0C),
+    surfaceContainerHigh = Color(0xFF141414),
+    surfaceContainerHighest = Color(0xFF1E1E1E),
+    onBackground = Color(0xFFF5F5F5),
+    onSurface = Color(0xFFF5F5F5),
     onSurfaceVariant = Onda.textFaint,
+    outlineVariant = Color(0xFF1F1F1F),
 )
 
 // The reference has no extra letter spacing; Material adds some by default.
