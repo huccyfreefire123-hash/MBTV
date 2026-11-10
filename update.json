@@ -1,6 +1,6 @@
 {
-  "versionCode": 6,
-  "versionName": "0.4.1",
-  "apkUrl": "https://github.com/huccyfreefire123-hash/MBTV/releases/download/v0.4.1/MBTV-0.4.1.apk",
-  "notes": "Agora dá para editar a lista M3U ou Xtream nas Definições, sem perder perfis e favoritos. O controle remoto também ficou melhor nos formulários."
+  "versionCode": 7,
+  "versionName": "0.5.0",
+  "apkUrl": "https://github.com/huccyfreefire123-hash/MBTV/releases/download/v0.5.0/MBTV-0.5.0.apk",
+  "notes": "O app agora usa o tema AMOLED do MBTV, com fundo preto e os degradês em cinza. As capas ficaram mais nítidas quando vêm do TMDB."
 }
