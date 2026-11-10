@@ -2,6 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Self-update: hands a newer APK of this app to the system installer. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <!-- Also runs on Android TV: no touch screen needed, shown in the TV launcher. -->
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />

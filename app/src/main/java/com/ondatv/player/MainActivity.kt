@@ -10,6 +10,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import com.ondatv.player.ui.App
 import com.ondatv.player.ui.OndaTheme
+import com.ondatv.player.ui.UpdatePrompt
 
 class MainActivity : ComponentActivity() {
     private val vm: AppViewModel by viewModels()
@@ -25,6 +26,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             OndaTheme {
                 App(vm) { request -> startActivity(PlayerActivity.intent(this, request)) }
+                // Offers a newer version when one is published (no store involved).
+                UpdatePrompt()
             }
         }
     }

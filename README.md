@@ -34,6 +34,20 @@ Passos:
 
 O APK de release é assinado com a chave de debug, para facilitar a instalação. Para publicar o app em uma loja, crie a sua própria chave de assinatura (Build > Generate Signed App Bundle / APK).
 
+## Atualização automática (sem loja)
+
+Ao abrir, o app lê o arquivo [`update.json`](update.json) deste repositório. Se o `versionCode` de lá for maior que o do app instalado, ele mostra "Atualização disponível", baixa o APK e abre o instalador do Android.
+
+Para publicar uma versão nova:
+
+1. Aumente `versionCode` e `versionName` em `app/build.gradle.kts`
+2. Gere o APK de release e publique em Releases
+3. Atualize o `update.json` com o novo `versionCode`, o `versionName`, o link do APK e o que mudou, e envie para a `main`
+
+O Android só instala por cima um APK assinado com a mesma chave. Guarde uma cópia da chave usada (por padrão, `~/.android/debug.keystore` do computador que gera o APK).
+
+Se você criou o seu próprio app a partir deste código, troque o endereço em `UPDATE_JSON_URL` (`app/src/main/java/com/ondatv/player/data/Update.kt`) para o `update.json` do seu repositório. O APK de outra pessoa não instala por cima do seu.
+
 ## Estrutura
 
 - `app/`: o app MBTV (Kotlin e Jetpack Compose), pacote `com.ondatv.player`
