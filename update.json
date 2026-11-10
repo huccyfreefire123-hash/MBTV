@@ -1,6 +1,6 @@
 {
-  "versionCode": 5,
-  "versionName": "0.4.0",
-  "apkUrl": "https://github.com/huccyfreefire123-hash/MBTV/releases/download/v0.4.0/MBTV-0.4.0.apk",
-  "notes": "O app agora avisa quando existe uma versão nova e atualiza sem precisar baixar o APK manualmente."
+  "versionCode": 6,
+  "versionName": "0.4.1",
+  "apkUrl": "https://github.com/huccyfreefire123-hash/MBTV/releases/download/v0.4.1/MBTV-0.4.1.apk",
+  "notes": "Agora dá para editar a lista M3U ou Xtream nas Definições, sem perder perfis e favoritos. O controle remoto também ficou melhor nos formulários."
 }
