@@ -341,7 +341,7 @@ private fun ChannelPicker(
             Text("Escolher canal", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
             OutlinedTextField(
                 query, { query = it }, singleLine = true,
-                placeholder = { Text("Buscar canal") }, modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("Buscar canal") }, modifier = Modifier.fillMaxWidth().formField(),
             )
             if (shown.isEmpty() && !showLockedAdult) EmptyState("Nenhum canal encontrado.")
             LazyColumn(Modifier.fillMaxSize()) {

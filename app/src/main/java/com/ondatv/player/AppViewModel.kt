@@ -375,6 +375,50 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         return true
     }
 
+    /**
+     * Changes the list in place: name, address or login. Unlike deleting it and adding another,
+     * the profiles, favourites and progress stay. A new address or login downloads the list again.
+     */
+    fun updateSource(edited: Source) {
+        val old = _sources.value.firstOrNull { it.id == edited.id } ?: return
+        val sameConnection = old.url == edited.url && old.epgUrl == edited.epgUrl && old.server == edited.server &&
+            old.username == edited.username && old.password == edited.password
+        // The expiry date belongs to the account: it is asked again when the login changes.
+        val saved = edited.copy(expiresAt = if (sameConnection) old.expiresAt else null)
+        _sources.value = _sources.value.map { if (it.id == saved.id) saved else it }
+        store.saveSources(_sources.value)
+        if (sameConnection) return
+        // What is on screen and on disk came from the old address: start again from the new one.
+        refreshJob?.cancel()
+        cache.clear(saved.id)
+        allItems = emptyList()
+        publish()
+        _epg.value = emptyMap()
+        _details.value = emptyMap()
+        detailsRequested.clear()
+        refresh()
+    }
+
+    /**
+     * Address to resume [p] from: the one in today's list when the title is still there, because
+     * the address or login of the list may have changed since the progress was saved.
+     */
+    fun resumeUrl(p: Progress): String {
+        val parts = p.key.split(':')
+        val item = allByKey[parts.take(3).joinToString(":")] ?: return p.url
+        val source = _sources.value.firstOrNull { it.id == item.sourceId } ?: return p.url
+        val episodeId = parts.getOrNull(3)
+        if (source.type == SourceType.XTREAM) {
+            // The server's own ids: the same title whatever the address.
+            if (episodeId == null) return item.url.ifEmpty { p.url }
+            return Xtream(source).episodeUrl(episodeId, p.url.substringAfterLast('/').substringAfterLast('.', "mp4"))
+        }
+        // M3U ids are positions in the file, which shift when the list changes: only the same title counts.
+        if (episodeId == null) return if (item.name == p.title) item.url.ifEmpty { p.url } else p.url
+        val episode = item.episodes.firstOrNull { it.id == episodeId } ?: return p.url
+        return if (p.title == "${item.name} - T${episode.season}E${episode.number}") episode.url else p.url
+    }
+
     /** Deletes the list and everything that came from it, so the next one starts clean. */
     fun removeSource(id: String) {
         refreshJob?.cancel()

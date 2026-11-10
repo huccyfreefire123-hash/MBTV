@@ -58,6 +58,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
@@ -101,6 +102,8 @@ fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, openProfiles: () -> Uni
     val context = LocalContext.current
     var adding by remember { mutableStateOf<SourceType?>(null) }
     var removing by remember { mutableStateOf<Source?>(null) }
+    var editing by remember { mutableStateOf<Source?>(null) }
+    val message by vm.message.collectAsStateWithLifecycle()
     var askPinToToggle by remember { mutableStateOf(false) }
     var changingPin by remember { mutableStateOf(false) }
     var creatingPin by remember { mutableStateOf(false) }
@@ -110,16 +113,14 @@ fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, openProfiles: () -> Uni
         // One list at a time.
         source = sources.firstOrNull(),
         loading = loading,
+        error = message,
         parentalOn = parentalOn,
         pinCreated = pinCreated,
         version = BuildConfig.VERSION_NAME,
         onBack = onBack,
         onProfile = openProfiles,
         onRefresh = { vm.refresh() },
-        onEditSource = {
-            // TODO: edit the address of the list (AppViewModel has no function for it yet).
-            Toast.makeText(context, "Em breve", Toast.LENGTH_SHORT).show()
-        },
+        onEditSource = { editing = sources.firstOrNull() },
         onRemoveSource = { removing = it },
         onAddSource = { adding = it },
         // Without a PIN of the user yet, it is created first.
@@ -129,9 +130,16 @@ fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, openProfiles: () -> Uni
 
     // Only reachable while there is no list; addSource refuses a second one anyway.
     adding?.takeIf { sources.isEmpty() }?.let { type ->
-        AddSourceDialog(type, onDismiss = { adding = null }) {
+        SourceDialog(type, onDismiss = { adding = null }) {
             vm.addSource(it)
             adding = null
+        }
+    }
+    // The same form with what the list has now; saving keeps profiles, favourites and progress.
+    editing?.let { current ->
+        SourceDialog(current.type, initial = current, onDismiss = { editing = null }) {
+            vm.updateSource(it)
+            editing = null
         }
     }
     removing?.let { s ->
@@ -184,6 +192,8 @@ private fun SettingsContent(
     profile: Profile,
     source: Source?,
     loading: Boolean,
+    // Why the list could not be loaded (wrong address or login, no connection); null when it loaded.
+    error: String?,
     parentalOn: Boolean,
     pinCreated: Boolean,
     version: String,
@@ -238,6 +248,12 @@ private fun SettingsContent(
         Block {
             if (source != null) {
                 SettingRow(Icons.AutoMirrored.Filled.List, source.name, bold = true, status = { SourceStatus(source) })
+                if (error != null && !loading) {
+                    Text(
+                        error, color = c.danger, fontSize = 13.sp, lineHeight = 18.sp,
+                        modifier = Modifier.padding(start = 56.dp, end = 16.dp, bottom = 12.dp),
+                    )
+                }
                 RowDivider()
                 SettingRow(
                     Icons.Filled.Refresh, "Atualizar lista", subtitle = if (loading) "Atualizando..." else null,
@@ -443,6 +459,7 @@ private fun SettingsPreview() {
             profile = Profile(DEFAULT_PROFILE, "Eu", 0, null),
             source = Source("1", "megabyte", SourceType.M3U, url = "http://exemplo.com/lista.m3u", expiresAt = 1_794_268_800),
             loading = false,
+            error = null,
             parentalOn = true,
             pinCreated = true,
             version = "0.2.1",
@@ -465,7 +482,7 @@ private fun ChangePinDialog(vm: AppViewModel, onDone: () -> Unit, onDismiss: () 
     fun PinField(value: String, label: String, onChange: (String) -> Unit) {
         OutlinedTextField(
             value, { v -> onChange(v.filter { it.isDigit() }.take(8)); error = null },
-            label = { Text(label) }, singleLine = true,
+            label = { Text(label) }, singleLine = true, modifier = Modifier.formField(),
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
         )
@@ -496,41 +513,59 @@ private fun ChangePinDialog(vm: AppViewModel, onDone: () -> Unit, onDismiss: () 
     )
 }
 
+/**
+ * The form of a list. With [initial] it edits that list (same fields, already filled in); without,
+ * it adds one. The keyboard's action key goes to the next field and closes the keyboard on the last.
+ */
 @Composable
-private fun AddSourceDialog(type: SourceType, onDismiss: () -> Unit, onSave: (Source) -> Unit) {
-    var name by remember { mutableStateOf("") }
-    var url by remember { mutableStateOf("") }
-    var epg by remember { mutableStateOf("") }
-    var server by remember { mutableStateOf("") }
-    var user by remember { mutableStateOf("") }
-    var pass by remember { mutableStateOf("") }
+private fun SourceDialog(type: SourceType, initial: Source? = null, onDismiss: () -> Unit, onSave: (Source) -> Unit) {
+    var name by remember { mutableStateOf(initial?.name.orEmpty()) }
+    var url by remember { mutableStateOf(initial?.url.orEmpty()) }
+    var epg by remember { mutableStateOf(initial?.epgUrl.orEmpty()) }
+    var server by remember { mutableStateOf(initial?.server.orEmpty()) }
+    var user by remember { mutableStateOf(initial?.username.orEmpty()) }
+    var pass by remember { mutableStateOf(initial?.password.orEmpty()) }
     val valid = if (type == SourceType.M3U) url.isNotBlank() else server.isNotBlank() && user.isNotBlank()
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (type == SourceType.M3U) "Lista M3U" else "Xtream Codes") },
+        title = {
+            Text(
+                when {
+                    initial == null -> if (type == SourceType.M3U) "Lista M3U" else "Xtream Codes"
+                    type == SourceType.M3U -> "Editar lista M3U"
+                    else -> "Editar Xtream Codes"
+                }
+            )
+        },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(name, { name = it }, label = { Text("Nome (opcional)") }, singleLine = true)
+                OutlinedTextField(
+                    name, { name = it }, label = { Text("Nome (opcional)") }, singleLine = true, modifier = Modifier.formField(),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                )
                 if (type == SourceType.M3U) {
                     OutlinedTextField(
-                        url, { url = it }, label = { Text("Endereco da lista (http...)") }, singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+                        url, { url = it }, label = { Text("Endereço da lista (http...)") }, singleLine = true, modifier = Modifier.formField(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Next),
                     )
                     OutlinedTextField(
-                        epg, { epg = it }, label = { Text("Guia EPG XMLTV (opcional)") }, singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+                        epg, { epg = it }, label = { Text("Guia EPG XMLTV (opcional)") }, singleLine = true, modifier = Modifier.formField(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Done),
                     )
                 } else {
                     OutlinedTextField(
-                        server, { server = it }, label = { Text("Servidor (http://host:porta)") }, singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+                        server, { server = it }, label = { Text("Servidor (http://host:porta)") }, singleLine = true, modifier = Modifier.formField(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Next),
                     )
-                    OutlinedTextField(user, { user = it }, label = { Text("Usuario") }, singleLine = true)
                     OutlinedTextField(
-                        pass, { pass = it }, label = { Text("Senha") }, singleLine = true,
+                        user, { user = it }, label = { Text("Usuário") }, singleLine = true, modifier = Modifier.formField(),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                    )
+                    OutlinedTextField(
+                        pass, { pass = it }, label = { Text("Senha") }, singleLine = true, modifier = Modifier.formField(),
                         visualTransformation = PasswordVisualTransformation(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
                     )
                 }
             }
@@ -538,9 +573,10 @@ private fun AddSourceDialog(type: SourceType, onDismiss: () -> Unit, onSave: (So
         confirmButton = {
             TextButton(enabled = valid, onClick = {
                 val fallback = if (type == SourceType.M3U) "Minha lista" else server.substringAfter("://").substringBefore('/')
+                // Editing keeps the list's id (and with it the favourites and progress).
                 onSave(
-                    Source(
-                        id = "", name = name.ifBlank { fallback }, type = type,
+                    (initial ?: Source(id = "", name = "", type = type)).copy(
+                        name = name.ifBlank { fallback },
                         url = url.trim(), epgUrl = epg.trim(),
                         server = server.trim(), username = user.trim(), password = pass,
                     )

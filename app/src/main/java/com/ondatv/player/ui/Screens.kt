@@ -189,7 +189,7 @@ fun HomeScreen(
                     items(resume, key = { it.key }) { p ->
                         Poster(
                             p.title, p.logo, w,
-                            onClick = { play(PlayRequest(p.key, p.title, p.url, p.logo, live = false)) },
+                            onClick = { play(PlayRequest(p.key, p.title, vm.resumeUrl(p), p.logo, live = false)) },
                             progress = p.position.toFloat() / p.duration,
                             subtitle = remaining(p),
                         )
@@ -416,7 +416,7 @@ fun CreatePinDialog(vm: AppViewModel, onDone: (String) -> Unit, onDismiss: () ->
     fun PinField(value: String, label: String, onChange: (String) -> Unit) {
         OutlinedTextField(
             value, { v -> onChange(v.filter { it.isDigit() }.take(8)); error = null },
-            label = { Text(label) }, singleLine = true,
+            label = { Text(label) }, singleLine = true, modifier = Modifier.formField(),
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
         )

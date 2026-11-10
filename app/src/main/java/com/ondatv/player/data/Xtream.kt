@@ -19,6 +19,9 @@ class Xtream(private val source: Source) {
 
     val epgUrl: String get() = "$base/xmltv.php?username=${enc(user)}&password=${enc(pass)}"
 
+    /** Address of an episode, the same way [episodes] builds it. */
+    fun episodeUrl(id: String, ext: String): String = "$base/series/$user/$pass/$id.$ext"
+
     /** The whole catalogue: the three lists download at the same time, each read as it streams in. */
     suspend fun load(): Loaded = coroutineScope {
         checkLogin()

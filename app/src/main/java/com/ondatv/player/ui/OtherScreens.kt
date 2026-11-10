@@ -312,7 +312,7 @@ fun SearchScreen(vm: AppViewModel, play: (PlayRequest) -> Unit, openSeries: (Str
             placeholder = { Text("Canal, filme ou série") },
             singleLine = true,
             shape = RoundedCornerShape(14.dp),
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).formField(),
         )
         if (query.trim().length >= 2 && results.isEmpty()) EmptyState("Nada encontrado.")
         LazyColumn(Modifier.fillMaxSize().padding(top = 8.dp)) {

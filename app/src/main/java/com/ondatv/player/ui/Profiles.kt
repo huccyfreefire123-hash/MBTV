@@ -313,7 +313,7 @@ private fun ProfileDialog(
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Avatar(preview, 72.dp, Modifier.align(Alignment.CenterHorizontally))
-                OutlinedTextField(name, { name = it.take(20) }, label = { Text("Nome") }, singleLine = true)
+                OutlinedTextField(name, { name = it.take(20) }, label = { Text("Nome") }, singleLine = true, modifier = Modifier.formField())
                 Text("Avatar", color = Onda.textFaint, fontSize = 13.sp)
                 AvatarPicker(preview, avatar) { avatar = it }
                 if (avatar == 0) Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -327,7 +327,7 @@ private fun ProfileDialog(
                 }
                 OutlinedTextField(
                     pin, { v -> pin = v.filter { it.isDigit() }.take(4) },
-                    label = { Text("PIN de 4 dígitos (opcional)") }, singleLine = true,
+                    label = { Text("PIN de 4 dígitos (opcional)") }, singleLine = true, modifier = Modifier.formField(),
                     visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                     isError = !pinOk,
@@ -375,7 +375,7 @@ private fun PinDialog(p: Profile, onOk: () -> Unit, onDismiss: () -> Unit) {
                         if (pin == p.pin) onOk() else { wrong = true; pin = "" }
                     }
                 },
-                singleLine = true,
+                singleLine = true, modifier = Modifier.formField(),
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                 isError = wrong,

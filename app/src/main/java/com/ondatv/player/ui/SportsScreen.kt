@@ -533,7 +533,7 @@ private fun TeamsDialog(
                     }
                 }
                 OutlinedTextField(
-                    query, { query = it }, singleLine = true,
+                    query, { query = it }, singleLine = true, modifier = Modifier.formField(),
                     label = { Text("Buscar ou digitar um time") },
                 )
                 LazyColumn(Modifier.heightIn(max = 280.dp)) {

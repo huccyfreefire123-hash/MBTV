@@ -45,7 +45,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.focusGroup
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.draw.clip
@@ -112,6 +119,25 @@ fun Modifier.focusIntoContent(): Modifier {
     val target = LocalContentFocus.current
     if (!LocalInOverlay.current || target == null) return this
     return this.focusProperties { down = target }
+}
+
+/**
+ * A single-line text field in a form or above a list: "up" and "down" leave the field, for the
+ * next one, the buttons or the results. Compose only does this by itself when the remote says it
+ * is a D-pad, which not every TV remote, air mouse or keyboard does; without it the focus stays
+ * stuck in the field.
+ */
+@Composable
+fun Modifier.formField(): Modifier {
+    val focus = LocalFocusManager.current
+    return onPreviewKeyEvent { e ->
+        if (e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+        when (e.key) {
+            Key.DirectionDown -> focus.moveFocus(FocusDirection.Down)
+            Key.DirectionUp -> focus.moveFocus(FocusDirection.Up)
+            else -> false
+        }
+    }
 }
 
 // ---------- Frosted controls ----------
