@@ -12,8 +12,8 @@ android {
         applicationId = "com.ondatv.player"
         minSdk = 26
         targetSdk = 35
-        versionCode = 3
-        versionName = "0.2.1"
+        versionCode = 4
+        versionName = "0.3.0"
     }
 
     buildTypes {
@@ -34,6 +34,8 @@ android {
     }
     buildFeatures {
         compose = true
+        // BuildConfig.VERSION_NAME, shown in the settings screen.
+        buildConfig = true
     }
     packaging {
         jniLibs {
@@ -72,6 +74,9 @@ dependencies {
     val media3 = "1.10.1"
     implementation(composeBom)
     implementation("androidx.compose.ui:ui")
+    // @Preview of a screen in Android Studio (the renderer itself only goes in debug builds).
+    implementation("androidx.compose.ui:ui-tooling-preview")
+    debugImplementation("androidx.compose.ui:ui-tooling")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.activity:activity-compose:1.13.0")

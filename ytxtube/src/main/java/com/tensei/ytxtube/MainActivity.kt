@@ -10,6 +10,10 @@ import android.os.Bundle
 import android.view.HapticFeedbackConstants
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.focusGroup
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
@@ -478,9 +482,10 @@ fun YtxTubeApp() {
     }
     BackHandler(enabled = updateState.visible) { updateState.dismiss() }
 
-    val canHandleRootBack = !player.expanded && !openSettings && !openAllSubscriptions &&
-        tab == Tab.Home && openPlaylist == null && openChannel == null &&
+    val noOverlay = !player.expanded && !openSettings && !openAllSubscriptions &&
+        openPlaylist == null && openChannel == null &&
         !openSearch && !signingIn && !showFullscreen && shortsEntry == null && !updateState.visible
+    val canHandleRootBack = noOverlay && tab == Tab.Home
     BackHandler(enabled = canHandleRootBack) {
         if (isVideoPlaying && pip.supported) {
             val entered = pip.enter(player.videoAspect.takeIf { it > 0 } ?: (16f / 9f))
@@ -494,6 +499,13 @@ fun YtxTubeApp() {
             // Inside MBTV this screen sits on top of the IPTV app: Back returns there.
             activity.finish()
         }
+    }
+    // TV: the feed never ends, so "down" cannot reach the bottom bar. Back takes the focus to the
+    // bar first; pressed again there, it does what it always did (home tab, then leave).
+    val navFocus = remember { FocusRequester() }
+    var navHasFocus by remember { mutableStateOf(false) }
+    BackHandler(enabled = TvMode.isTv && noOverlay && !pip.active && !navHasFocus) {
+        runCatching { navFocus.requestFocus() }
     }
 
     val density = LocalDensity.current
@@ -592,7 +604,9 @@ fun YtxTubeApp() {
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .widthIn(max = if (TvMode.isTv) 1280.dp else Dp.Unspecified)
-                .fillMaxHeight(),
+                .fillMaxHeight()
+                // TV: the lists end above the floating bar, so the row with the focus is never behind it.
+                .padding(bottom = if (TvMode.isTv) navTop + (if (hasMini) MiniHeight + MiniGap else 0.dp) else 0.dp),
             transitionSpec = {
                 if (reduced) fadeIn(snap()) togetherWith fadeOut(snap())
                 else (fadeIn(tween(Motion.PageEnterMs, easing = Motion.Emphasized)) +
@@ -872,12 +886,16 @@ fun YtxTubeApp() {
                 onTabSelected = { index -> Tab.entries.getOrNull(index)?.let(selectTab) },
                 backdrop = pageBackdrop,
                 isDarkSurface = tab == Tab.Shorts,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth()
+                    .focusRequester(navFocus)
+                    .onFocusChanged { navHasFocus = it.hasFocus }
+                    .focusGroup(),
             ) {
                 Tab.entries.forEach { t ->
                     LiquidNavTab(t, t == tab, isDarkSurface = tab == Tab.Shorts) { selectTab(t) }
                 }
             }
+            DisposableEffect(Unit) { onDispose { navHasFocus = false } }
         }
 
 

@@ -321,6 +321,7 @@ fun ChannelScreen(
         },
     ) { top ->
         val d = state.details
+        val columns = videoColumns()
         when {
             d == null && state.error != null -> Box(Modifier.padding(top = top)) { EmptyState(
                 Icons.Rounded.CloudOff, "Não foi possível carregar este canal", state.error.orEmpty(),
@@ -371,9 +372,7 @@ fun ChannelScreen(
                 }
                 when (state.activeTab) {
                     ChannelTab.Videos -> {
-                        items(state.videos, key = { it.id }) { video ->
-                            VideoCard(video, onClick = { onOpen(video) }, modifier = Modifier.animateItem())
-                        }
+                        videoCards(state.videos, columns, onOpen)
                         if (state.loading || state.hasMore) item {
                             Box(Modifier.fillMaxWidth().padding(28.dp), Alignment.Center) {
                                 CircularProgressIndicator(color = c.primary, strokeWidth = 4.dp, modifier = Modifier.size(32.dp))
@@ -422,9 +421,7 @@ fun ChannelScreen(
                                 )
                             }
                         } else {
-                            items(state.liveVideos, key = { it.id }) { video ->
-                                VideoCard(video, onClick = { onOpen(video) }, modifier = Modifier.animateItem())
-                            }
+                            videoCards(state.liveVideos, columns, onOpen)
                         }
                     }
                     ChannelTab.Community -> {

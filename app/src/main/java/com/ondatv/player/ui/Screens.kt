@@ -161,6 +161,8 @@ fun HomeScreen(
     // Films and series open their page; channels play at once.
     val open: (Item) -> Unit = { if (it.kind == Kind.LIVE) play(it.toRequest()) else openSeries(it.key) }
     val scrollFocus = remember { FocusRequester() }
+    // The buttons over the banner: the remote reaches them with "up" from the banner.
+    val topFocus = remember { FocusRequester() }
 
     Box(Modifier.fillMaxSize().background(Onda.heroBg)) {
         Column(Modifier.fillMaxSize().focusRequester(scrollFocus).focusGroup().verticalScroll(rememberScrollState())) {
@@ -174,7 +176,7 @@ fun HomeScreen(
                 ) { Text("Adicionar lista") }
                 return@Column
             }
-            Hero(heroItems, details, open)
+            Hero(heroItems, details, open, topFocus)
             LoadingBar(vm)
             message?.let { Text(it, color = Color(0xFFFF8A80), modifier = Modifier.padding(16.dp)) }
 
@@ -232,6 +234,7 @@ fun HomeScreen(
             BottomSpace()
         }
         CompositionLocalProvider(LocalContentFocus provides scrollFocus) { TopControls(
+            focus = topFocus,
             left = { AvatarButton(vm, openProfiles) },
             right = {
                 GlassPill {
@@ -299,11 +302,13 @@ fun BrowseScreen(
 
     val open: (Item) -> Unit = { if (it.kind == Kind.LIVE) play(it.toRequest()) else openSeries(it.key) }
     val scrollFocus = remember { FocusRequester() }
+    // The buttons over the banner: the remote reaches them with "up" from the banner.
+    val topFocus = remember { FocusRequester() }
     val noun = if (kind == Kind.MOVIE) "Filmes" else "Séries"
 
     Box(Modifier.fillMaxSize().background(Onda.heroBg)) {
         Column(Modifier.fillMaxSize().focusRequester(scrollFocus).focusGroup().verticalScroll(rememberScrollState())) {
-            Hero(heroItems, details, open)
+            Hero(heroItems, details, open, topFocus)
             LoadingBar(vm)
             if (list.isEmpty()) EmptyState("Nenhum conteúdo aqui ainda.")
             if (hot.isNotEmpty()) {
@@ -325,6 +330,7 @@ fun BrowseScreen(
             BottomSpace()
         }
         CompositionLocalProvider(LocalContentFocus provides scrollFocus) { TopControls(
+            focus = topFocus,
             left = { GlassCircle(Icons.Filled.Menu, "Categorias", openCategories) },
             right = {
                 GlassPill {

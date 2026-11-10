@@ -42,8 +42,9 @@ fun TabBar(
 ) {
     val context = LocalContext.current
     val contentFocus = LocalContentFocus.current
-    val selIndex = tabs.indexOfFirst { it.route == selected }.coerceAtLeast(0)
-    val currentSel by rememberUpdatedState(selIndex)
+    // -1 while the screen on top belongs to no tab (settings): then no tab is marked.
+    val selIndex = tabs.indexOfFirst { it.route == selected }
+    val currentSel by rememberUpdatedState(selIndex.coerceAtLeast(0))
     val selectedIndex = remember { { currentSel } }
     // A tab that doesn't become the selection (MBTV opens its own screen, "soon" only says so)
     // rebuilds the bar, so the pill goes back to the tab that is still selected.
@@ -64,11 +65,12 @@ fun TabBar(
         key(resetKey) {
             LiquidBottomTabs(
                 selectedTabIndex = selectedIndex,
-                onTabSelected = { i -> if (i != currentSel) choose(i) },
+                onTabSelected = { i -> if (i != currentSel || selIndex < 0) choose(i) },
                 backdrop = backdrop,
                 tabsCount = tabs.size,
                 modifier = Modifier.widthIn(max = 368.dp).fillMaxWidth(),
                 isDarkSurface = true,
+                showIndicator = selIndex >= 0,
             ) {
                 tabs.forEachIndexed { i, t ->
                     LiquidBottomTab(

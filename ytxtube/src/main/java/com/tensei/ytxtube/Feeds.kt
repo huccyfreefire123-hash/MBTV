@@ -235,16 +235,11 @@ fun FeedList(
         }
     }
     LaunchedEffect(nearEnd, listVideos.size) { if (nearEnd && listVideos.isNotEmpty()) feed.loadMore() }
+    val columns = videoColumns()
     PullToRefresh(enabled = pullToRefresh, refreshing = feed.refreshing, onRefresh = feed::refresh, topPadding = indicatorTop) {
     LazyColumn(state = list, contentPadding = contentPadding) {
         header()
-        items(listVideos, key = { it.id }) { video ->
-            VideoCard(
-                video,
-                onClick = { onOpen(video) },
-                modifier = Modifier.animateItem(),
-            )
-        }
+        videoCards(listVideos, columns, onOpen)
         when {
 
 

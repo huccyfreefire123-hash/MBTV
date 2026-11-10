@@ -106,9 +106,11 @@ fun App(vm: AppViewModel, play: (PlayRequest) -> Unit) {
         route == "movies" || kindArg == Kind.MOVIE.name -> "movies"
         route.startsWith("show") -> if (showKind(vm, entry?.arguments?.getString("key")) == Kind.MOVIE) "movies" else "series"
         route == "series" || kindArg == Kind.SERIES.name -> "series"
+        // Settings belongs to no tab: none is marked while it is open.
+        route == "settings" -> ""
         else -> lastTab
     }
-    SideEffect { lastTab = selected }
+    SideEffect { if (selected.isNotEmpty()) lastTab = selected }
 
     val openSeries: (String) -> Unit = { key -> nav.navigate("show/" + Uri.encode(key)) }
     val openSearch: () -> Unit = { nav.navigate("search") }

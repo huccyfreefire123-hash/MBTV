@@ -44,8 +44,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.focusGroup
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -162,9 +164,12 @@ fun PillIcon(icon: ImageVector, description: String, onClick: () -> Unit) {
     }
 }
 
-/** Fixed row of floating buttons over the top of a screen, with a soft dark scrim behind. */
+/**
+ * Fixed row of floating buttons over the top of a screen, with a soft dark scrim behind.
+ * [focus]: where the remote lands when it comes up from the banner (the buttons on the right).
+ */
 @Composable
-fun TopControls(left: @Composable () -> Unit, right: @Composable () -> Unit) {
+fun TopControls(left: @Composable () -> Unit, right: @Composable () -> Unit, focus: FocusRequester? = null) {
     Box(
         Modifier
             .fillMaxWidth()
@@ -177,7 +182,7 @@ fun TopControls(left: @Composable () -> Unit, right: @Composable () -> Unit) {
             CompositionLocalProvider(LocalInOverlay provides true) {
                 left()
                 Spacer(Modifier.weight(1f))
-                right()
+                Box(if (focus != null) Modifier.focusRequester(focus).focusGroup() else Modifier) { right() }
             }
         }
     }

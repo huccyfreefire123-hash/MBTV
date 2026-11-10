@@ -4,6 +4,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
@@ -54,6 +55,16 @@ fun CollapsingHeaderLayout(
     header: @Composable () -> Unit,
     content: @Composable (top: Dp) -> Unit,
 ) {
+    if (TvMode.isTv) {
+        // A TV remote moves by position on the screen. With the header above the list (instead
+        // of floating over it) "down" from the header finds the list, and a row that takes the
+        // focus is never hidden behind the header. Nothing collapses: there is no touch scroll.
+        Column(Modifier.fillMaxSize()) {
+            Box(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface)) { header() }
+            Box(Modifier.fillMaxWidth().weight(1f)) { content(0.dp) }
+        }
+        return
+    }
     val density = LocalDensity.current
     val c = MaterialTheme.colorScheme
     val reduced = rememberReducedMotion()

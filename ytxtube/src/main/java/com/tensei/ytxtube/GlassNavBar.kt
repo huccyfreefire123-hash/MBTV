@@ -149,6 +149,8 @@ fun LiquidBottomTabs(
     tabsCount: Int,
     modifier: Modifier = Modifier,
     isDarkSurface: Boolean = false,
+    // False while the screen on top belongs to no tab: the bar shows no tab as the selected one.
+    showIndicator: Boolean = true,
     content: @Composable RowScope.() -> Unit
 ) {
     val isLightTheme = !isDarkSurface && !isSystemInDarkTheme() && ThemeSettings.mode != "dark" && ThemeSettings.mode != "amoled"
@@ -304,7 +306,7 @@ fun LiquidBottomTabs(
 
         // 2. Moving active tab indicator pill. It stays *behind* the tab row so
         // the icons and labels are never distorted by the glass lens.
-        Box(
+        if (showIndicator) Box(
             Modifier
                 .padding(horizontal = 4f.dp)
                 .graphicsLayer {

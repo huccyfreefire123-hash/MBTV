@@ -27,6 +27,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -117,9 +126,16 @@ fun interleave(a: List<Item>, b: List<Item>): List<Item> {
 
 private val shadowed = TextStyle(shadow = Shadow(Color(0xAA000000), Offset(0f, 2f), 12f))
 
-/** Full-width banner that pages through items by itself, with page dots below. */
+/**
+ * Full-width banner that pages through items by itself, with page dots below.
+ *
+ * For a TV remote the whole banner is one stop: left / right change the page, OK opens the one
+ * on screen, and "up" goes to [upFocus], the buttons floating over the banner (they sit inside
+ * its area, so the remote would never find them by itself). The focus stays on the banner while
+ * the pages change.
+ */
 @Composable
-fun Hero(items: List<Item>, details: Map<String, Details>, onOpen: (Item) -> Unit) {
+fun Hero(items: List<Item>, details: Map<String, Details>, onOpen: (Item) -> Unit, upFocus: FocusRequester? = null) {
     if (items.isEmpty()) {
         Spacer(Modifier.statusBarsPadding().height(72.dp))
         return
@@ -127,6 +143,9 @@ fun Hero(items: List<Item>, details: Map<String, Details>, onOpen: (Item) -> Uni
     val config = LocalConfiguration.current
     val height = (config.screenHeightDp * 0.57f).coerceIn(360f, config.screenWidthDp * 1.4f).dp
     val pager = rememberPagerState { items.size }
+    val scope = rememberCoroutineScope()
+    val interaction = remember { MutableInteractionSource() }
+    val focused by interaction.collectIsFocusedAsState()
 
     LaunchedEffect(pager, items.size) {
         while (true) {
@@ -137,17 +156,34 @@ fun Hero(items: List<Item>, details: Map<String, Details>, onOpen: (Item) -> Uni
         }
     }
 
-    Box(Modifier.fillMaxWidth().height(height)) {
+    Box(
+        Modifier.fillMaxWidth().height(height)
+            .then(if (focused) Modifier.border(3.dp, Color.White) else Modifier)
+            .focusProperties { if (upFocus != null) up = upFocus }
+            .onKeyEvent { e ->
+                if (e.type != KeyEventType.KeyDown || items.size < 2) return@onKeyEvent false
+                val page = when (e.key) {
+                    Key.DirectionRight -> (pager.currentPage + 1) % items.size
+                    Key.DirectionLeft -> if (pager.currentPage > 0) pager.currentPage - 1 else return@onKeyEvent false
+                    else -> return@onKeyEvent false
+                }
+                scope.launch { pager.animateScrollToPage(page) }
+                true
+            }
+            .clickable(interactionSource = interaction, indication = null) {
+                items.getOrNull(pager.currentPage)?.let(onOpen)
+            }
+    ) {
         HorizontalPager(pager, Modifier.fillMaxSize()) { page ->
             val item = items[page]
-            HeroPage(item, details[item.key], onOpen)
+            HeroPage(item, details[item.key])
         }
         Dots(items.size, pager.currentPage, Modifier.align(Alignment.BottomCenter).padding(bottom = 12.dp))
     }
 }
 
 @Composable
-private fun HeroPage(item: Item, d: Details?, onOpen: (Item) -> Unit) {
+private fun HeroPage(item: Item, d: Details?) {
     val image = d?.backdrop ?: item.backdrop ?: item.logo
     val year = d?.year ?: item.year
     val genre = (d?.genre ?: item.genre)?.split(',', '/')?.take(3)?.joinToString(", ") { it.trim() }
@@ -155,13 +191,7 @@ private fun HeroPage(item: Item, d: Details?, onOpen: (Item) -> Unit) {
     val rating = d?.rating ?: item.rating
     val plot = d?.plot ?: item.plot
 
-    val interaction = remember { MutableInteractionSource() }
-    val focused by interaction.collectIsFocusedAsState()
-    Box(
-        Modifier.fillMaxSize()
-            .then(if (focused) Modifier.border(3.dp, Color.White) else Modifier)
-            .clickable(interactionSource = interaction, indication = null) { onOpen(item) }
-    ) {
+    Box(Modifier.fillMaxSize()) {
         AsyncImage(
             model = image, contentDescription = item.name,
             contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize(),

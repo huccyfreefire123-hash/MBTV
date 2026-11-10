@@ -6,6 +6,9 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.items
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -351,7 +354,7 @@ fun ChannelAvatar(
 
 
 @Composable
-fun VideoCard(video: VideoItem, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun VideoCard(video: VideoItem, onClick: () -> Unit, modifier: Modifier = Modifier, radius: Int = 0) {
     val c = MaterialTheme.colorScheme
     val menu = LocalVideoMenu.current
     Column(
@@ -365,7 +368,7 @@ fun VideoCard(video: VideoItem, onClick: () -> Unit, modifier: Modifier = Modifi
             Thumbnail(
                 video.thumbnail,
                 Modifier.fillMaxWidth().aspectRatio(16f / 9f),
-                radius = 0,
+                radius = radius,
                 videoId = video.id,
             )
             DurationPill(video.durationSec, Modifier.align(Alignment.BottomEnd).padding(8.dp), isLive = video.isLive)
@@ -414,6 +417,40 @@ fun VideoCard(video: VideoItem, onClick: () -> Unit, modifier: Modifier = Modifi
                     modifier = Modifier.size(20.dp),
                 )
             }
+        }
+    }
+}
+
+
+/** Video cards per row: one on a phone; on a tablet or a TV, as many as fit side by side. */
+@Composable
+fun videoColumns(): Int {
+    val config = LocalConfiguration.current
+    if (!TvMode.isTv && config.smallestScreenWidthDp < 600) return 1
+    return (config.screenWidthDp / 240).coerceIn(2, 5)
+}
+
+/**
+ * The video cards of a list. With one column each card is a full-width row, as on a phone; with
+ * more, the cards go side by side in a grid, so a TV shows several videos at once and the remote
+ * moves between them.
+ */
+fun LazyListScope.videoCards(videos: List<VideoItem>, columns: Int, onOpen: (VideoItem) -> Unit) {
+    if (columns <= 1) {
+        items(videos, key = { it.id }) { video ->
+            VideoCard(video, onClick = { onOpen(video) }, modifier = Modifier.animateItem())
+        }
+        return
+    }
+    items(videos.chunked(columns), key = { it[0].id }) { row ->
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            row.forEach { video ->
+                VideoCard(video, onClick = { onOpen(video) }, modifier = Modifier.weight(1f), radius = 12)
+            }
+            repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
         }
     }
 }

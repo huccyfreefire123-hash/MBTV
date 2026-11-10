@@ -1167,15 +1167,14 @@ fun SearchScreen(
             else -> {
                 val list = rememberScrollToTop(scrollToTop)
                 LaunchedEffect(state.generation) { list.scrollToItem(0) }
+                val columns = videoColumns()
                 LazyColumn(state = list, contentPadding = contentPadding.withTop(top)) {
-                items(state.results, key = { it.id }) { video ->
-                    VideoCard(video, onClick = {
-                        val currentQuery = state.submitted.trim().ifEmpty { state.query.trim() }
-                        if (currentQuery.isNotEmpty()) {
-                            SearchHistory.add(currentQuery)
-                        }
-                        onOpen(video)
-                    })
+                videoCards(state.results, columns) { video ->
+                    val currentQuery = state.submitted.trim().ifEmpty { state.query.trim() }
+                    if (currentQuery.isNotEmpty()) {
+                        SearchHistory.add(currentQuery)
+                    }
+                    onOpen(video)
                 }
             }
             }
