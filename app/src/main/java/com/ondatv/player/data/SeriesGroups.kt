@@ -16,8 +16,14 @@ object SeriesGroups {
         Regex("""(?<![\p{L}\p{N}])[STst](\d{1,2})(?![\p{L}\p{N}])"""),
     )
     private const val CUT_BEFORE = " -|:._([–—"
-    private const val CUT_AFTER = " -|:._)]–—"
     private val notWord = Regex("""[^\p{L}\p{N}]+""")
+
+    // What may follow the season and still tell two versions apart: a tag in brackets or
+    // parentheses ("[L]", "(2019)"), the language or the quality. Anything else after the season
+    // is the show's name again or its original title ("Flash T1 Flash", "... T06 The.Good.Doctor").
+    private val versionTag = Regex(
+        """(?i)\[[^\]]*]|\([^)]*\)|(?<![\p{L}\p{N}])(dublad[oa]|legendad[oa]|dual(?:\s*[aá]udio)?|nacional|dub|leg|4k|uhd|fhd|hd|sd|hdr|2160p|1080p|720p)(?![\p{L}\p{N}])"""
+    )
 
     /** "Elite - 2ª Temporada" -> ("Elite", 2); a name that points to no season -> (name, null). */
     fun split(name: String): Pair<String, Int?> {
@@ -25,9 +31,9 @@ object SeriesGroups {
             ?: return name to null
         val season = m.groupValues[1].toIntOrNull()?.takeIf { it > 0 } ?: return name to null
         val before = name.substring(0, m.range.first).trimEnd { it in CUT_BEFORE }
-        val after = name.substring(m.range.last + 1).trimStart { it in CUT_AFTER }
         if (before.none { it.isLetterOrDigit() }) return name to null
-        return (if (after.isEmpty()) before else "$before $after").trim() to season
+        val tags = versionTag.findAll(name.substring(m.range.last + 1)).joinToString(" ") { it.value }
+        return (if (tags.isEmpty()) before else "$before $tags").trim() to season
     }
 
     /**

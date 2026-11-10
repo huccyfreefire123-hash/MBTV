@@ -164,6 +164,8 @@ class Cache(dir: File) {
     }
 
     private companion object {
-        const val MAGIC = 0x4D425402 // "MBT" + format version 2 (series seasons, episode pictures)
+        // "MBT" + format version 3. Raise it when the way a list is read changes (v2: seasons of a
+        // series joined, episode pictures; v3: series names cleaned), so the saved list is read again.
+        const val MAGIC = 0x4D425403
     }
 }
