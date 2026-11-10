@@ -1,5 +1,10 @@
 package com.ondatv.player.ui
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.focusGroup
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -200,8 +205,16 @@ fun SeriesScreen(vm: AppViewModel, key: String, play: (PlayRequest) -> Unit, onB
         }
     }
 
+    // Inside a season of a series with several, "back" returns to the list of seasons.
+    val inSeason = season != null && (episodes?.map { it.season }?.distinct()?.size ?: 0) > 1
+    val back = { if (inSeason) season = null else onBack() }
+    BackHandler(enabled = inSeason) { season = null }
+
+    // The remote's "down" from the buttons over the picture goes into the seasons and episodes.
+    val listFocus = remember { FocusRequester() }
+
     Box(Modifier.fillMaxSize().background(Onda.heroBg)) {
-        LazyColumn(Modifier.fillMaxSize()) {
+        LazyColumn(Modifier.fillMaxSize().focusRequester(listFocus).focusGroup()) {
             item {
                 Box(Modifier.fillMaxWidth().aspectRatio(1.1f)) {
                     AsyncImage(
@@ -236,48 +249,31 @@ fun SeriesScreen(vm: AppViewModel, key: String, play: (PlayRequest) -> Unit, onB
                 eps.isEmpty() -> item { EmptyState(error ?: "Nenhum episódio encontrado.") }
                 else -> {
                     val seasons = eps.map { it.season }.distinct().sorted()
-                    val current = season ?: seasons.first()
-                    item {
-                        LazyRow(
-                            contentPadding = PaddingValues(16.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            items(seasons) { s ->
-                                val sel = s == current
-                                Text(
-                                    "Temporada $s",
-                                    color = if (sel) Color.Black else Color.White, fontSize = 15.sp, fontWeight = FontWeight.Medium,
-                                    modifier = Modifier.clip(RoundedCornerShape(18.dp))
-                                        .background(if (sel) Color.White else Onda.glass)
-                                        .clickable { season = s }
-                                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                                )
-                            }
+                    // Several seasons: the list of seasons first; one: its episodes at once.
+                    val open = season?.takeIf { it in seasons } ?: seasons.singleOrNull()
+                    if (open == null) {
+                        item { SectionHeader("Temporadas") }
+                        items(seasons, key = { "season$it" }) { s ->
+                            val count = eps.count { it.season == s }
+                            SeasonRow("Temporada $s", if (count == 1) "1 episódio" else "$count episódios") { season = s }
                         }
-                    }
-                    // The whole series in order, so the player moves on to the next episode
-                    // (and from the last of a season to the first of the next) by itself.
-                    val queue = eps.sortedWith(compareBy({ it.season }, { it.number })).map { ep ->
-                        PlayRequest("${item.key}:${ep.id}", "${item.name} - T${ep.season}E${ep.number}", ep.url, item.logo, live = false)
-                    }
-                    item {
-                        val inSeason = eps.filter { it.season == current }
-                        val width = episodeCardWidth()
-                        LazyRow(
-                            contentPadding = PaddingValues(horizontal = 16.dp),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        ) {
-                            items(inSeason, key = { it.id }) { ep ->
-                                val epKey = "${item.key}:${ep.id}"
-                                val p = progress[epKey]
-                                EpisodeCard(
-                                    number = ep.number, title = ep.title, image = item.backdrop ?: item.logo,
-                                    progress = p?.takeIf { it.duration > 0 }?.let { it.position.toFloat() / it.duration },
-                                    width = width,
-                                ) {
-                                    val start = queue.first { it.key == epKey }
-                                    play(start.copy(queue = queue))
-                                }
+                    } else {
+                        // The whole series in order, so the player moves on to the next episode
+                        // (and from the last of a season to the first of the next) by itself.
+                        val queue = eps.map { ep ->
+                            PlayRequest("${item.key}:${ep.id}", "${item.name} - T${ep.season}E${ep.number}", ep.url, item.logo, live = false)
+                        }
+                        item { SectionHeader("Temporada $open") }
+                        items(eps.filter { it.season == open }.sortedBy { it.number }, key = { it.id }) { ep ->
+                            val epKey = "${item.key}:${ep.id}"
+                            val p = progress[epKey]
+                            EpisodeRow(
+                                number = ep.number, title = ep.title, plot = ep.plot,
+                                image = ep.image ?: item.backdrop ?: item.logo,
+                                progress = p?.takeIf { it.duration > 0 }?.let { it.position.toFloat() / it.duration },
+                            ) {
+                                val start = queue.first { it.key == epKey }
+                                play(start.copy(queue = queue))
                             }
                         }
                     }
@@ -286,11 +282,13 @@ fun SeriesScreen(vm: AppViewModel, key: String, play: (PlayRequest) -> Unit, onB
             item { BottomSpace() }
         }
         Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 16.dp, vertical = 6.dp)) {
-            GlassCircle(Icons.AutoMirrored.Filled.KeyboardArrowLeft, "Voltar", onBack)
-            Spacer(Modifier.weight(1f))
-            if (item != null) {
-                val fav = item.key in favorites
-                GlassCircle(if (fav) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder, "Favorito", { vm.toggleFavorite(item.key) })
+            CompositionLocalProvider(LocalContentFocus provides listFocus, LocalInOverlay provides true) {
+                GlassCircle(Icons.AutoMirrored.Filled.KeyboardArrowLeft, "Voltar", back)
+                Spacer(Modifier.weight(1f))
+                if (item != null) {
+                    val fav = item.key in favorites
+                    GlassCircle(if (fav) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder, "Favorito", { vm.toggleFavorite(item.key) })
+                }
             }
         }
     }

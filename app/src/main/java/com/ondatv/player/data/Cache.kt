@@ -118,11 +118,15 @@ class Cache(dir: File) {
         writeByte(i.kind.ordinal)
         str(i.id); str(i.name); str(i.group); str(i.logo); str(i.url); str(i.epgId)
         writeInt(i.episodes.size)
-        i.episodes.forEach { e -> str(e.id); str(e.title); writeInt(e.season); writeInt(e.number); str(e.url) }
+        i.episodes.forEach { e ->
+            str(e.id); str(e.title); writeInt(e.season); writeInt(e.number); str(e.url); str(e.image); str(e.plot)
+        }
         writeFloat(i.rating ?: Float.NaN)
         writeLong(i.added)
         str(i.backdrop); str(i.plot); str(i.genre); str(i.year)
         writeBoolean(i.adult)
+        writeInt(i.parts.size)
+        i.parts.forEach { p -> str(p.id); writeInt(p.season ?: 0) }
     }
 
     private fun DataInputStream.item(sourceId: String): Item {
@@ -133,12 +137,13 @@ class Cache(dir: File) {
         val logo = str()
         val url = str()!!
         val epgId = str()
-        val episodes = List(readInt()) { Episode(str()!!, str()!!, readInt(), readInt(), str()!!) }
+        val episodes = List(readInt()) { Episode(str()!!, str()!!, readInt(), readInt(), str()!!, str(), str()) }
         val rating = readFloat().takeUnless { it.isNaN() }
         return Item(
             sourceId, kind, id, name, group, logo, url, epgId, episodes, rating,
             added = readLong(), backdrop = str(), plot = str(), genre = str(), year = str(),
             adult = readBoolean(),
+            parts = List(readInt()) { SeriesPart(str()!!, readInt().takeIf { it > 0 }) },
         )
     }
 
@@ -159,6 +164,6 @@ class Cache(dir: File) {
     }
 
     private companion object {
-        const val MAGIC = 0x4D425401 // "MBT" + format version 1
+        const val MAGIC = 0x4D425402 // "MBT" + format version 2 (series seasons, episode pictures)
     }
 }

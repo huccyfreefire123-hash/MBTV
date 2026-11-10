@@ -17,6 +17,7 @@ import com.ondatv.player.data.nameKey
 import com.ondatv.player.data.Profile
 import com.ondatv.player.data.Programme
 import com.ondatv.player.data.Progress
+import com.ondatv.player.data.SeriesGroups
 import com.ondatv.player.data.Source
 import com.ondatv.player.data.SourceType
 import com.ondatv.player.data.Store
@@ -80,8 +81,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             .groupBy({ it.kind }, { it.group }).mapValues { (_, g) -> g.distinct() }
         // Locked: no adult cover, title or synopsis reaches any screen (rows, banner, search, grids).
         val visible = if (adultLocked() && adult.isNotEmpty()) allItems.filterNot { Adult.isAdult(it) } else allItems
-        allByKey = allItems.associateBy { it.key }
-        visibleByKey = if (visible === allItems) allByKey else visible.associateBy { it.key }
+        allByKey = byKey(allItems)
+        visibleByKey = if (visible === allItems) allByKey else byKey(visible)
         _items.value = visible
     }
 
@@ -129,6 +130,19 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** Whether a saved progress (film or episode key) belongs to adult content that is locked now. */
+    /**
+     * Items by key; a series joined from several panel entries is also found by the key of each
+     * entry, so progress and favourites saved under a season of its own still point to it.
+     */
+    private fun byKey(list: List<Item>): Map<String, Item> {
+        val out = HashMap<String, Item>(list.size * 2)
+        list.forEach { out[it.key] = it }
+        list.forEach { item ->
+            item.parts.forEach { p -> out.putIfAbsent("${item.sourceId}:${item.kind.name}:${p.id}", item) }
+        }
+        return out
+    }
+
     fun isLockedAdultKey(progressKey: String): Boolean {
         if (!adultLocked()) return false
         val itemKey = progressKey.split(':').take(3).joinToString(":")
@@ -515,7 +529,16 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (item.episodes.isNotEmpty()) return item.episodes
         val source = _sources.value.firstOrNull { it.id == item.sourceId } ?: return emptyList()
         if (source.type != SourceType.XTREAM) return emptyList()
-        return withContext(Dispatchers.IO) { Xtream(source).episodes(item.id) }
+        val server = Xtream(source)
+        if (item.parts.isEmpty()) return withContext(Dispatchers.IO) { server.episodes(item.id) }
+        // A series the panel sends one season per entry: every entry at the same time, then in order.
+        // An entry that fails leaves out only its own season; if all fail, the error is shown.
+        val loaded = coroutineScope {
+            item.parts.map { p -> async(Dispatchers.IO) { p.season to runCatching { server.episodes(p.id) } } }
+                .map { it.await() }
+        }
+        if (loaded.all { it.second.isFailure }) throw loaded.first().second.exceptionOrNull()!!
+        return SeriesGroups.combine(loaded.map { (season, result) -> season to result.getOrDefault(emptyList()) })
     }
 
     fun nowNext(item: Item, now: Long): Pair<Programme?, Programme?> {

@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -324,39 +325,70 @@ fun Poster(
 }
 
 @Composable
-fun episodeCardWidth(): Dp {
+fun episodeThumbWidth(): Dp {
     val w = LocalConfiguration.current.screenWidthDp
-    return (w * 0.62f).coerceIn(200f, 320f).dp
+    return (w * 0.4f).coerceIn(140f, 260f).dp
 }
 
-/** Episode in the horizontal carousel of a series: wide picture, number, title, progress. */
+/** A season in the page of a series: its name, how many episodes, and an arrow to open it. */
 @Composable
-fun EpisodeCard(number: Int, title: String, image: String?, progress: Float?, width: Dp, onClick: () -> Unit) {
+fun SeasonRow(title: String, subtitle: String, onClick: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().clickable(onClick = onClick).heightIn(min = 64.dp)
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(title, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Medium, maxLines = 1)
+            Text(subtitle, color = Onda.textFaint, fontSize = 13.sp, maxLines = 1)
+        }
+        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = Onda.textFaint, modifier = Modifier.size(22.dp))
+    }
+    HorizontalDivider(color = Onda.divider, thickness = 0.5.dp, modifier = Modifier.padding(horizontal = 16.dp))
+}
+
+/** Episode in the list of a season: wide picture with its number and progress, title, synopsis. */
+@Composable
+fun EpisodeRow(number: Int, title: String, plot: String?, image: String?, progress: Float?, onClick: () -> Unit) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
     val shape = RoundedCornerShape(10.dp)
-    Column(Modifier.width(width).clickable(interactionSource = interaction, indication = null, onClick = onClick)) {
-        Box(
-            Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(shape).background(Onda.card)
-                .then(if (focused) Modifier.border(3.dp, Color.White, shape) else Modifier),
-        ) {
-            AsyncImage(
-                model = image, contentDescription = null, contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(), alpha = 0.55f,
-            )
-            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Color(0x99000000)))))
-            Text(
-                "E$number", color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Black, style = textShadow,
-                modifier = Modifier.align(Alignment.BottomStart).padding(start = 12.dp, bottom = 14.dp),
-            )
-            if (progress != null) {
-                ProgressLine(progress, Modifier.align(Alignment.BottomCenter).padding(horizontal = 10.dp, vertical = 8.dp), height = 3.dp)
+    Column(
+        Modifier.fillMaxWidth().clickable(interactionSource = interaction, indication = null, onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                Modifier.width(episodeThumbWidth()).aspectRatio(16f / 9f).clip(shape).background(Onda.card)
+                    .then(if (focused) Modifier.border(3.dp, Color.White, shape) else Modifier),
+            ) {
+                AsyncImage(
+                    model = image, contentDescription = null, contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(), alpha = 0.55f,
+                )
+                Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Color(0x99000000)))))
+                if (number > 0) {
+                    Text(
+                        "E$number", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Black, style = textShadow,
+                        modifier = Modifier.align(Alignment.BottomStart).padding(start = 10.dp, bottom = 10.dp),
+                    )
+                }
+                if (progress != null) {
+                    ProgressLine(progress, Modifier.align(Alignment.BottomCenter).padding(horizontal = 8.dp, vertical = 6.dp), height = 3.dp)
+                }
             }
+            Text(
+                title, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
+                maxLines = 3, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f).padding(start = 14.dp),
+            )
         }
-        Text(
-            title, color = Color.White, fontSize = 14.sp, maxLines = 2, overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(top = 8.dp),
-        )
+        if (!plot.isNullOrBlank()) {
+            Text(
+                plot, color = Onda.textDim, fontSize = 14.sp, lineHeight = 20.sp,
+                maxLines = 3, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.dp),
+            )
+        }
     }
 }
 

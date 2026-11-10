@@ -64,8 +64,10 @@ class Xtream(private val source: Source) {
         }
         val series = async(Dispatchers.IO) {
             val out = ArrayList<Item>()
+            val tmdb = HashMap<String, String>()
             val cats = seriesCats.await()
             scan("get_series") { f ->
+                f.tmdbId()?.let { tmdb[f["series_id"].orEmpty()] = it }
                 out += Item(
                     source.id, Kind.SERIES, f["series_id"].orEmpty(), f["name"].orEmpty(),
                     cats[f["category_id"]] ?: "Sem categoria",
@@ -80,7 +82,8 @@ class Xtream(private val source: Source) {
                     adult = f.isAdultFlag(),
                 )
             }
-            out
+            // One series per show, even when the panel sends each season as its own entry.
+            SeriesGroups.joinXtream(out, tmdb)
         }
         Loaded(live.await() + movies.await() + series.await(), epgUrl)
     }
@@ -135,8 +138,9 @@ class Xtream(private val source: Source) {
         val series = HashMap<String, SeriesMeta>()
         scan("get_series") { f ->
             val name = f["name"] ?: return@scan
+            // By show, as the M3U joins its seasons: the first entry (usually season 1) gives the details.
             series.putIfAbsent(
-                nameKey(name),
+                nameKey(SeriesGroups.split(name).first),
                 SeriesMeta(
                     rating = f.rating(),
                     plot = f["plot"]?.ifBlank { null },
@@ -162,6 +166,10 @@ class Xtream(private val source: Source) {
             .firstNotNullOfOrNull { k -> get(k)?.trim()?.take(4)?.takeIf { it.length == 4 && it.all(Char::isDigit) } }
 
     private fun Map<String, String>.isAdultFlag(): Boolean = get("is_adult").let { it == "1" || it == "true" }
+
+    /** The TMDB id some panels send with each series ("tmdb" or "tmdb_id"); null when there is none. */
+    private fun Map<String, String>.tmdbId(): String? =
+        (get("tmdb") ?: get("tmdb_id"))?.trim()?.takeIf { it.isNotEmpty() && it != "0" && it != "null" }
 
     /** Guide channel id of each live channel, by stream id (a plain M3U has no tvg-id). */
     fun liveGuideIds(): Map<String, String> {
@@ -230,12 +238,16 @@ class Xtream(private val source: Source) {
             bySeason.optJSONArray(seasonKey)?.forEachObject { e ->
                 val id = e.optString("id")
                 val ext = e.optString("container_extension").ifEmpty { "mp4" }
+                // "info" is an object with the episode's picture and synopsis (an empty array when there are none).
+                val info = e.optJSONObject("info")
                 out += Episode(
                     id = id,
                     title = e.optString("title"),
                     season = e.optString("season").toIntOrNull() ?: seasonKey.toIntOrNull() ?: 1,
                     number = e.optString("episode_num").toIntOrNull() ?: 0,
                     url = "$base/series/$user/$pass/$id.$ext",
+                    image = info?.optString("movie_image")?.ifBlank { null } ?: info?.firstImage("backdrop_path"),
+                    plot = info?.optString("plot")?.ifBlank { null },
                 )
             }
         }

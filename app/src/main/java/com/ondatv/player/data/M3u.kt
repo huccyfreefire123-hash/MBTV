@@ -65,8 +65,10 @@ object M3u {
                             !seen.add(group + "\u0000" + line) -> Unit
                             ep != null -> {
                                 val (show, season, number) = ep
+                                // Its own picture only when it is not just the cover of the series.
+                                val cover = seriesMeta[show]?.second ?: logo
                                 seriesEpisodes.getOrPut(show) { ArrayList() }
-                                    .add(Episode(id, title, season, number, line))
+                                    .add(Episode(id, title, season, number, line, image = logo?.takeIf { it != cover }))
                                 seriesMeta.putIfAbsent(show, group to logo)
                             }
                             "/series/" in lower -> {
@@ -99,11 +101,24 @@ object M3u {
             seriesMeta[show] = seriesMeta.getValue(bucket)
             seriesEpisodes.getOrPut(show) { ArrayList() }.addAll(eps)
         }
-        seriesEpisodes.forEach { (show, eps) ->
-            val (group, logo) = seriesMeta[show] ?: ("Sem categoria" to null)
+        // Panels name each season as a show of its own ("Elite - 2ª Temporada S01E01"):
+        // the seasons of one show become one series, with every episode in its season.
+        val shows = LinkedHashMap<String, MutableList<Pair<String, Int?>>>() // key -> (show, season)
+        seriesEpisodes.keys.forEach { show ->
+            val (base, season) = SeriesGroups.split(show)
+            val adult = Adult.isAdultGroup(seriesMeta[show]?.first ?: "")
+            shows.getOrPut(SeriesGroups.key(base, adult)) { ArrayList() } += show to season
+        }
+        shows.values.forEach { members ->
+            val sorted = members.sortedBy { it.second ?: 0 }
+            val lead = sorted[0].first
+            val name = if (sorted.size == 1 && sorted[0].second == null) lead else SeriesGroups.split(lead).first
+            val (group, logo) = seriesMeta[lead] ?: ("Sem categoria" to null)
+            val eps = SeriesGroups.combine(sorted.map { (show, season) -> season to seriesEpisodes.getValue(show) })
             result += Item(
-                sourceId, Kind.SERIES, "s" + show.hashCode().toUInt(), show, group, logo, "",
-                episodes = eps.sortedWith(compareBy({ it.season }, { it.number })),
+                sourceId, Kind.SERIES, "s" + name.hashCode().toUInt(), name, group,
+                logo ?: sorted.firstNotNullOfOrNull { seriesMeta[it.first]?.second }, "",
+                episodes = eps,
                 added = eps.maxOf { it.id.toLong() },
             )
         }

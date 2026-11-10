@@ -23,7 +23,16 @@ data class Episode(
     val season: Int,
     val number: Int,
     val url: String,
+    // Picture and synopsis of this episode, when the list or the server gives them.
+    val image: String? = null,
+    val plot: String? = null,
 )
+
+/**
+ * One entry of the panel that is part of a series: panels often send each season as its own
+ * series, with its own id. [season] is the season its name points to ("Elite T2" -> 2).
+ */
+data class SeriesPart(val id: String, val season: Int?)
 
 data class Item(
     val sourceId: String,
@@ -45,6 +54,8 @@ data class Item(
     val year: String? = null,
     // Marked adult by the server (Xtream is_adult).
     val adult: Boolean = false,
+    // Xtream series joined from several panel entries (one per season); empty for a single entry.
+    val parts: List<SeriesPart> = emptyList(),
 ) {
     // Built once: lists of tens of thousands of items look it up constantly.
     val key: String = "$sourceId:${kind.name}:$id"
