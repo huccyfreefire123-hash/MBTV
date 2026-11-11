@@ -1,5 +1,7 @@
 package com.ondatv.player.ui
 
+import com.ondatv.player.isTv
+import androidx.compose.material.icons.filled.QrCode2
 import com.ondatv.player.data.ListError
 import android.widget.Toast
 import androidx.compose.foundation.LocalIndication
@@ -104,6 +106,7 @@ fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, openProfiles: () -> Uni
     var adding by remember { mutableStateOf<SourceType?>(null) }
     var removing by remember { mutableStateOf<Source?>(null) }
     // Opened from "Editar lista" in a load error: the form is already there.
+    var linking by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<Source?>(if (startEditing) vm.sources.value.firstOrNull() else null) }
     val error by vm.error.collectAsStateWithLifecycle()
     var askPinToToggle by remember { mutableStateOf(false) }
@@ -125,6 +128,7 @@ fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, openProfiles: () -> Uni
         onEditSource = { editing = sources.firstOrNull() },
         onRemoveSource = { removing = it },
         onAddSource = { adding = it },
+        onAddByPhone = { linking = true },
         // Without a PIN of the user yet, it is created first.
         onToggleParental = { if (pinCreated) askPinToToggle = true else creatingPin = true },
         onPin = { if (pinCreated) changingPin = true else creatingPin = true },
@@ -143,6 +147,12 @@ fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, openProfiles: () -> Uni
             vm.updateSource(it)
             editing = null
         }
+    }
+    if (linking && sources.isEmpty()) {
+        PhoneLinkDialog(type = null, prefill = null, onDismiss = { linking = false }, onReceived = {
+            vm.addSource(it)
+            linking = false
+        })
     }
     removing?.let { s ->
         AlertDialog(
@@ -205,6 +215,7 @@ private fun SettingsContent(
     onEditSource: () -> Unit,
     onRemoveSource: (Source) -> Unit,
     onAddSource: (SourceType) -> Unit,
+    onAddByPhone: () -> Unit,
     onToggleParental: () -> Unit,
     onPin: () -> Unit,
 ) {
@@ -277,9 +288,15 @@ private fun SettingsContent(
             } else {
                 SettingRow(Icons.AutoMirrored.Filled.List, "Nenhuma lista cadastrada", subtitle = "Escolha como conectar")
                 RowDivider()
-                SettingRow(Icons.Filled.Add, "Adicionar lista M3U", onClick = { onAddSource(SourceType.M3U) }, trailing = { Chevron() })
+                // On a TV: fill it in on a phone (QR code), or type it with the remote.
+                val tv = LocalContext.current.isTv()
+                if (tv) {
+                    SettingRow(Icons.Filled.QrCode2, "Adicionar pelo celular (QR code)", onClick = onAddByPhone, trailing = { Chevron() })
+                    RowDivider()
+                }
+                SettingRow(Icons.Filled.Add, if (tv) "Digitar lista M3U" else "Adicionar lista M3U", onClick = { onAddSource(SourceType.M3U) }, trailing = { Chevron() })
                 RowDivider()
-                SettingRow(Icons.Filled.Add, "Adicionar Xtream Codes", onClick = { onAddSource(SourceType.XTREAM) }, trailing = { Chevron() })
+                SettingRow(Icons.Filled.Add, if (tv) "Digitar Xtream Codes" else "Adicionar Xtream Codes", onClick = { onAddSource(SourceType.XTREAM) }, trailing = { Chevron() })
             }
         }
 
@@ -472,7 +489,7 @@ private fun SettingsPreview() {
             pinCreated = true,
             version = "0.2.1",
             onBack = {}, onProfile = {}, onRefresh = {}, onEditSource = {}, onRemoveSource = {},
-            onAddSource = {}, onToggleParental = {}, onPin = {},
+            onAddSource = {}, onAddByPhone = {}, onToggleParental = {}, onPin = {},
         )
     }
 }
@@ -534,6 +551,28 @@ internal fun SourceDialog(type: SourceType, initial: Source? = null, onDismiss: 
     var user by remember { mutableStateOf(initial?.username.orEmpty()) }
     var pass by remember { mutableStateOf(initial?.password.orEmpty()) }
     val valid = if (type == SourceType.M3U) url.isNotBlank() else server.isNotBlank() && user.isNotBlank()
+    // On a TV the form can also be filled in on a phone: what the phone sends goes into the fields.
+    val tv = LocalContext.current.isTv()
+    var linking by remember { mutableStateOf(false) }
+    if (linking) {
+        PhoneLinkDialog(
+            type = type,
+            prefill = Source(
+                id = initial?.id.orEmpty(), name = name, type = type, url = url, epgUrl = epg,
+                server = server, username = user, password = pass,
+            ),
+            onDismiss = { linking = false },
+            onReceived = { s ->
+                name = s.name
+                url = s.url
+                epg = s.epgUrl
+                server = s.server
+                user = s.username
+                pass = s.password
+                linking = false
+            },
+        )
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -576,6 +615,7 @@ internal fun SourceDialog(type: SourceType, initial: Source? = null, onDismiss: 
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
                     )
                 }
+                if (tv) TextButton(onClick = { linking = true }) { Text("Preencher pelo celular (QR code)") }
             }
         },
         confirmButton = {

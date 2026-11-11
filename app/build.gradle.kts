@@ -12,8 +12,8 @@ android {
         applicationId = "com.ondatv.player"
         minSdk = 26
         targetSdk = 35
-        versionCode = 8
-        versionName = "0.6.0"
+        versionCode = 9
+        versionName = "0.7.0"
     }
 
     buildTypes {
@@ -87,6 +87,8 @@ dependencies {
     implementation("androidx.media3:media3-exoplayer-hls:$media3")
     implementation("androidx.media3:media3-ui:$media3")
     implementation("io.coil-kt:coil-compose:2.7.0")
+    // QR code of "Adicionar pelo celular" (only the encoder is used).
+    implementation("com.google.zxing:core:3.5.3")
     // Liquid-glass tab bar, the same one the YTXTube module uses.
     implementation("io.github.kyant0:backdrop:2.0.1")
 }

@@ -1,5 +1,10 @@
 package com.ondatv.player.ui
 
+import com.ondatv.player.isTv
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.material.icons.filled.QrCode2
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -91,12 +96,15 @@ fun ListErrorCard(error: ListError, onRetry: () -> Unit, onEdit: () -> Unit, mod
 }
 
 /**
- * First screen of an app without a list: what to do in one sentence and the two ways to connect
- * one, each opening its form right here.
+ * First screen of an app without a list: what to do in one sentence and the ways to connect one,
+ * each opening right here. On a TV there are two: fill it in on a phone (QR code) or type it with
+ * the remote.
  */
 @Composable
 fun WelcomeAddList(vm: AppViewModel) {
     var adding by remember { mutableStateOf<SourceType?>(null) }
+    var linking by remember { mutableStateOf(false) }
+    val tv = LocalContext.current.isTv()
     val wide = LocalConfiguration.current.screenWidthDp >= 600
     Column(
         Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 24.dp).padding(top = if (wide) 72.dp else 96.dp, bottom = 24.dp),
@@ -110,17 +118,21 @@ fun WelcomeAddList(vm: AppViewModel) {
             modifier = Modifier.padding(top = 10.dp).widthIn(max = 560.dp),
         )
         Spacer(Modifier.height(28.dp))
-        val options = listOf(
-            Triple(SourceType.M3U, "Lista M3U" to Icons.Filled.Link, "Cole o endereço (link) da lista, o que termina em .m3u ou tem get.php."),
-            Triple(SourceType.XTREAM, "Xtream Codes" to Icons.Filled.VpnKey, "Informe o servidor, o usuário e a senha que o seu provedor deu."),
-        )
+        val options = buildList {
+            if (tv) {
+                add(Option(null, "Pelo celular", Icons.Filled.QrCode2, "Escaneie um QR code e preencha no celular, sem digitar com o controle."))
+            }
+            add(Option(SourceType.M3U, if (tv) "Digitar lista M3U" else "Lista M3U", Icons.Filled.Link, "Cole o endereço (link) da lista, o que termina em .m3u ou tem get.php."))
+            add(Option(SourceType.XTREAM, if (tv) "Digitar Xtream Codes" else "Xtream Codes", Icons.Filled.VpnKey, "Informe o servidor, o usuário e a senha que o seu provedor deu."))
+        }
+        val choose: (SourceType?) -> Unit = { type -> if (type == null) linking = true else adding = type }
         if (wide) {
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                options.forEach { (type, title, text) -> OptionCard(title.first, title.second, text, Modifier.width(300.dp)) { adding = type } }
+            Row(Modifier.widthIn(max = 1000.dp).height(IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                options.forEach { o -> OptionCard(o.title, o.icon, o.text, Modifier.weight(1f).fillMaxHeight()) { choose(o.type) } }
             }
         } else {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                options.forEach { (type, title, text) -> OptionCard(title.first, title.second, text, Modifier.fillMaxWidth()) { adding = type } }
+                options.forEach { o -> OptionCard(o.title, o.icon, o.text, Modifier.fillMaxWidth()) { choose(o.type) } }
             }
         }
     }
@@ -130,7 +142,15 @@ fun WelcomeAddList(vm: AppViewModel) {
             adding = null
         }
     }
+    if (linking) {
+        PhoneLinkDialog(type = null, prefill = null, onDismiss = { linking = false }, onReceived = {
+            vm.addSource(it)
+            linking = false
+        })
+    }
 }
+
+private class Option(val type: SourceType?, val title: String, val icon: ImageVector, val text: String)
 
 @Composable
 private fun OptionCard(title: String, icon: ImageVector, text: String, modifier: Modifier, onClick: () -> Unit) {
