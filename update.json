@@ -1,6 +1,6 @@
 {
-  "versionCode": 9,
-  "versionName": "0.7.0",
-  "apkUrl": "https://github.com/huccyfreefire123-hash/MBTV/releases/download/v0.7.0/MBTV-0.7.0.apk",
-  "notes": "Na Android TV, agora dá para adicionar a lista pelo celular: escaneie o QR code e preencha o formulário no celular. Digitar com o controle continua disponível."
+  "versionCode": 10,
+  "versionName": "0.7.1",
+  "apkUrl": "https://github.com/huccyfreefire123-hash/MBTV/releases/download/v0.7.1/MBTV-0.7.1.apk",
+  "notes": "Adicionar pelo celular: o texto ao lado do QR code ficou legível na TV, e um aviso explica o que fazer se o celular der erro ao abrir o link."
 }
