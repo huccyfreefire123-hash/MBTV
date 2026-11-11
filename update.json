@@ -1,6 +1,6 @@
 {
-  "versionCode": 8,
-  "versionName": "0.6.0",
-  "apkUrl": "https://github.com/huccyfreefire123-hash/MBTV/releases/download/v0.6.0/MBTV-0.6.0.apk",
-  "notes": "Busca sem acento e com buscas recentes, foco animado na TV, erros de lista mais claros, carregamento com blocos cinza e, no player, pular 10 segundos e ajuste de tela."
+  "versionCode": 9,
+  "versionName": "0.7.0",
+  "apkUrl": "https://github.com/huccyfreefire123-hash/MBTV/releases/download/v0.7.0/MBTV-0.7.0.apk",
+  "notes": "Na Android TV, agora dá para adicionar a lista pelo celular: escaneie o QR code e preencha o formulário no celular. Digitar com o controle continua disponível."
 }
