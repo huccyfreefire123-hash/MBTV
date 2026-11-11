@@ -7,6 +7,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -34,6 +35,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.DialogProperties
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
@@ -67,6 +69,10 @@ fun PhoneLinkDialog(type: SourceType?, prefill: Source?, onReceived: (Source) ->
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        // The platform width differs between TVs (narrow on some, squeezing the steps to one word a
+        // line), so the dialog sets its own: wide enough for the QR code and the steps side by side.
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+        modifier = Modifier.padding(horizontal = 32.dp).widthIn(max = 720.dp).fillMaxWidth(),
         title = { Text("Adicionar pelo celular") },
         text = {
             when {
@@ -88,8 +94,8 @@ fun PhoneLinkDialog(type: SourceType?, prefill: Source?, onReceived: (Source) ->
                             )
                         }
                     }
-                    val steps: @Composable () -> Unit = {
-                        Column(Modifier.widthIn(max = 360.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    val steps: @Composable (Modifier) -> Unit = { modifier ->
+                        Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text("1. Aponte a câmera do celular para o código.", fontSize = 15.sp)
                             Text("2. Abra o link e preencha o formulário.", fontSize = 15.sp)
                             Text("3. Toque em Enviar: a lista aparece aqui.", fontSize = 15.sp)
@@ -97,7 +103,14 @@ fun PhoneLinkDialog(type: SourceType?, prefill: Source?, onReceived: (Source) ->
                                 "O celular precisa estar na mesma rede Wi-Fi da TV.",
                                 fontSize = 13.sp, color = Onda.textFaint,
                             )
-                            Text(address.orEmpty(), fontSize = 12.sp, color = Onda.textFaint, fontWeight = FontWeight.Medium)
+                            // Android 17 blocks Chrome from the home network until the user allows it
+                            // (the phone shows ERR_TOO_MANY_RETRIES); this TV app itself is not affected.
+                            Text(
+                                "Deu erro no celular? Em Configurações > Apps > Chrome > Permissões, permita " +
+                                    "Dispositivos próximos (rede local), ou abra o link em outro navegador.",
+                                fontSize = 13.sp, color = Onda.textFaint,
+                            )
+                            Text(address.orEmpty(), fontSize = 14.sp, color = Onda.textFaint, fontWeight = FontWeight.Medium)
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                 CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = Color.White)
                                 Text("Aguardando o celular...", fontSize = 14.sp)
@@ -107,12 +120,12 @@ fun PhoneLinkDialog(type: SourceType?, prefill: Source?, onReceived: (Source) ->
                     if (wide) {
                         Row(horizontalArrangement = Arrangement.spacedBy(24.dp), verticalAlignment = Alignment.CenterVertically) {
                             picture()
-                            steps()
+                            steps(Modifier.weight(1f))
                         }
                     } else {
                         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
                             picture()
-                            steps()
+                            steps(Modifier)
                         }
                     }
                 }
