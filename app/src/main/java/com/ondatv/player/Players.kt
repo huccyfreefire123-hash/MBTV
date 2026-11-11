@@ -27,6 +27,9 @@ fun buildPlayer(context: Context, small: Boolean = false): ExoPlayer {
         .setReadTimeoutMs(30_000)
     val builder = ExoPlayer.Builder(context)
         .setMediaSourceFactory(DefaultMediaSourceFactory(DefaultDataSource.Factory(context, http)))
+        // The back and forward buttons skip 10 seconds (the default is 5 and 15).
+        .setSeekBackIncrementMs(10_000)
+        .setSeekForwardIncrementMs(10_000)
     if (small) {
         val selector = DefaultTrackSelector(context)
         selector.setParameters(selector.buildUponParameters().setMaxVideoSize(960, 540))

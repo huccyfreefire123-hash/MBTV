@@ -157,7 +157,7 @@ class Store(context: Context) {
     fun clearProfileData(id: String) {
         if (id == DEFAULT_PROFILE) return
         prefs.edit().apply {
-            listOf("favorites", "recentLive", "hidden", "progress", "teams").forEach { remove("${it}_$id") }
+            listOf("favorites", "recentLive", "hidden", "progress", "teams", "searches").forEach { remove("${it}_$id") }
         }.apply()
     }
 
@@ -174,6 +174,28 @@ class Store(context: Context) {
     fun addRecentLive(key: String) {
         val list = (listOf(key) + recentLive().filter { it != key }).take(20)
         prefs.edit().putString(k("recentLive"), list.joinToString("\n")).apply()
+    }
+
+    /** Texts this profile searched for, most recent first. */
+    fun recentSearches(): List<String> =
+        prefs.getString(k("searches"), "")!!.split('\n').filter { it.isNotEmpty() }
+
+    fun addRecentSearch(text: String) {
+        val t = text.trim().replace('\n', ' ')
+        if (t.length < 2) return
+        val list = (listOf(t) + recentSearches().filterNot { it.equals(t, ignoreCase = true) }).take(8)
+        prefs.edit().putString(k("searches"), list.joinToString("\n")).apply()
+    }
+
+    fun clearRecentSearches() {
+        prefs.edit().remove(k("searches")).apply()
+    }
+
+    /** How the player fits the picture to the screen: 0 fit, 1 fill (crops the edges), 2 stretch. */
+    fun playerFit(): Int = prefs.getInt("player_fit", 0)
+
+    fun setPlayerFit(mode: Int) {
+        prefs.edit().putInt("player_fit", mode).apply()
     }
 
     /** Teams this profile follows in Esportes. */

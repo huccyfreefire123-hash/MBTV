@@ -99,7 +99,7 @@ fun MovieScreen(vm: AppViewModel, key: String, play: (PlayRequest) -> Unit, onBa
         } else {
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
                 Box(Modifier.fillMaxWidth()) {
-                    Box(Modifier.fillMaxWidth().aspectRatio(1.03f)) {
+                    Box(Modifier.fillMaxWidth().height(detailHeaderHeight(1.03f))) {
                         AsyncImage(
                             model = d?.backdrop ?: item.backdrop ?: item.logo, contentDescription = null,
                             contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize(),

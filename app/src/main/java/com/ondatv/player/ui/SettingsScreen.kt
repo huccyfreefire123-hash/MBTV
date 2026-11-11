@@ -1,5 +1,6 @@
 package com.ondatv.player.ui
 
+import com.ondatv.player.data.ListError
 import android.widget.Toast
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
@@ -92,7 +93,7 @@ private object SettingsColors {
 
 /** The settings screen with its state and dialogs; [SettingsContent] only draws it. */
 @Composable
-fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, openProfiles: () -> Unit) {
+fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, openProfiles: () -> Unit, startEditing: Boolean = false) {
     val sources by vm.sources.collectAsStateWithLifecycle()
     vm.profileId.collectAsStateWithLifecycle().value
     vm.profiles.collectAsStateWithLifecycle().value
@@ -102,8 +103,9 @@ fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, openProfiles: () -> Uni
     val context = LocalContext.current
     var adding by remember { mutableStateOf<SourceType?>(null) }
     var removing by remember { mutableStateOf<Source?>(null) }
-    var editing by remember { mutableStateOf<Source?>(null) }
-    val message by vm.message.collectAsStateWithLifecycle()
+    // Opened from "Editar lista" in a load error: the form is already there.
+    var editing by remember { mutableStateOf<Source?>(if (startEditing) vm.sources.value.firstOrNull() else null) }
+    val error by vm.error.collectAsStateWithLifecycle()
     var askPinToToggle by remember { mutableStateOf(false) }
     var changingPin by remember { mutableStateOf(false) }
     var creatingPin by remember { mutableStateOf(false) }
@@ -113,7 +115,7 @@ fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, openProfiles: () -> Uni
         // One list at a time.
         source = sources.firstOrNull(),
         loading = loading,
-        error = message,
+        error = error,
         parentalOn = parentalOn,
         pinCreated = pinCreated,
         version = BuildConfig.VERSION_NAME,
@@ -193,7 +195,7 @@ private fun SettingsContent(
     source: Source?,
     loading: Boolean,
     // Why the list could not be loaded (wrong address or login, no connection); null when it loaded.
-    error: String?,
+    error: ListError?,
     parentalOn: Boolean,
     pinCreated: Boolean,
     version: String,
@@ -250,9 +252,15 @@ private fun SettingsContent(
                 SettingRow(Icons.AutoMirrored.Filled.List, source.name, bold = true, status = { SourceStatus(source) })
                 if (error != null && !loading) {
                     Text(
-                        error, color = c.danger, fontSize = 13.sp, lineHeight = 18.sp,
-                        modifier = Modifier.padding(start = 56.dp, end = 16.dp, bottom = 12.dp),
+                        error.text, color = c.danger, fontSize = 13.sp, lineHeight = 18.sp,
+                        modifier = Modifier.padding(start = 56.dp, end = 16.dp, bottom = if (error.detail == null) 12.dp else 2.dp),
                     )
+                    if (error.detail != null) {
+                        Text(
+                            error.detail, color = c.textSecondary, fontSize = 12.sp, lineHeight = 16.sp,
+                            modifier = Modifier.padding(start = 56.dp, end = 16.dp, bottom = 12.dp),
+                        )
+                    }
                 }
                 RowDivider()
                 SettingRow(
@@ -518,7 +526,7 @@ private fun ChangePinDialog(vm: AppViewModel, onDone: () -> Unit, onDismiss: () 
  * it adds one. The keyboard's action key goes to the next field and closes the keyboard on the last.
  */
 @Composable
-private fun SourceDialog(type: SourceType, initial: Source? = null, onDismiss: () -> Unit, onSave: (Source) -> Unit) {
+internal fun SourceDialog(type: SourceType, initial: Source? = null, onDismiss: () -> Unit, onSave: (Source) -> Unit) {
     var name by remember { mutableStateOf(initial?.name.orEmpty()) }
     var url by remember { mutableStateOf(initial?.url.orEmpty()) }
     var epg by remember { mutableStateOf(initial?.epgUrl.orEmpty()) }

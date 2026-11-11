@@ -107,7 +107,7 @@ fun App(vm: AppViewModel, play: (PlayRequest) -> Unit) {
         route.startsWith("show") -> if (showKind(vm, entry?.arguments?.getString("key")) == Kind.MOVIE) "movies" else "series"
         route == "series" || kindArg == Kind.SERIES.name -> "series"
         // Settings belongs to no tab: none is marked while it is open.
-        route == "settings" -> ""
+        route.startsWith("settings") -> ""
         else -> lastTab
     }
     SideEffect { if (selected.isNotEmpty()) lastTab = selected }
@@ -131,7 +131,7 @@ fun App(vm: AppViewModel, play: (PlayRequest) -> Unit) {
             composable("home") {
                 HomeScreen(
                     vm, play, openSeries, openSearch,
-                    openSettings = { nav.navigate("settings") },
+                    openEditList = { nav.navigate("settings?edit=1") },
                     openProfiles = { nav.navigate("profiles?locked=0") },
                     openSports = { nav.navigate("sports") },
                     openGrid = grid,
@@ -144,7 +144,7 @@ fun App(vm: AppViewModel, play: (PlayRequest) -> Unit) {
                 ProfilesScreen(vm, locked, openSettings = {
                     // Settings take the place of this screen, so "back" returns to where it was opened.
                     nav.popBackStack()
-                    nav.navigate("settings")
+                    nav.navigate("settings?edit=0")
                 }) { nav.popBackStack() }
             }
             composable("live") {
@@ -155,11 +155,13 @@ fun App(vm: AppViewModel, play: (PlayRequest) -> Unit) {
             }
             composable("movies") {
                 BrowseScreen(vm, Kind.MOVIE, play, openSeries, openSearch,
-                    openCategories = { nav.navigate("cats/MOVIE") }, openGrid = { grid(Kind.MOVIE, it) })
+                    openCategories = { nav.navigate("cats/MOVIE") }, openGrid = { grid(Kind.MOVIE, it) },
+                    openEditList = { nav.navigate("settings?edit=1") })
             }
             composable("series") {
                 BrowseScreen(vm, Kind.SERIES, play, openSeries, openSearch,
-                    openCategories = { nav.navigate("cats/SERIES") }, openGrid = { grid(Kind.SERIES, it) })
+                    openCategories = { nav.navigate("cats/SERIES") }, openGrid = { grid(Kind.SERIES, it) },
+                    openEditList = { nav.navigate("settings?edit=1") })
             }
             composable("cats/{kind}") { e ->
                 val kind = Kind.valueOf(e.arguments?.getString("kind") ?: Kind.MOVIE.name)
@@ -169,7 +171,9 @@ fun App(vm: AppViewModel, play: (PlayRequest) -> Unit) {
                 val kind = Kind.valueOf(e.arguments?.getString("kind") ?: Kind.MOVIE.name)
                 GridScreen(vm, kind, Uri.decode(e.arguments?.getString("group").orEmpty()), play, openSeries, back)
             }
-            composable("settings") { SettingsScreen(vm, back) { nav.navigate("profiles?locked=0") } }
+            composable("settings?edit={edit}") { e ->
+                SettingsScreen(vm, back, openProfiles = { nav.navigate("profiles?locked=0") }, startEditing = e.arguments?.getString("edit") == "1")
+            }
             composable("search") { SearchScreen(vm, play, openSeries, back) }
             // A film opens its details page, a series its episodes.
             composable("show/{key}") { e ->

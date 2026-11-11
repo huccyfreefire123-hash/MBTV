@@ -1,5 +1,7 @@
 package com.ondatv.player
 
+import com.ondatv.player.data.ListErrors
+import com.ondatv.player.data.ListError
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -167,8 +169,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val _loading = MutableStateFlow(false)
     val loading: StateFlow<Boolean> = _loading
 
-    private val _message = MutableStateFlow<String?>(null)
-    val message: StateFlow<String?> = _message
+    private val _error = MutableStateFlow<ListError?>(null)
+
+    /** Why the list could not be loaded, when it could not (see data/ListErrors.kt). */
+    val error: StateFlow<ListError?> = _error
 
     private val _recentLive = MutableStateFlow(store.recentLive())
     val recentLive: StateFlow<List<String>> = _recentLive
@@ -212,7 +216,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         refreshJob?.cancel()
         refreshJob = viewModelScope.launch {
             _loading.value = true
-            _message.value = null
+            _error.value = null
             val sources = _sources.value
             // First the copy kept on disk, shown at once; the fresh list replaces it when it arrives.
             var cached: List<Pair<Source, Loaded>> = emptyList()
@@ -241,7 +245,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 return@launch
             }
             val showedCache = allItems.isNotEmpty()
-            val errors = ArrayList<String>()
+            val errors = ArrayList<ListError>()
             // Expiry dates as the servers report them now, by source id; a failed check keeps the last one.
             val expiries = HashMap<String, Long?>()
             val loaded = withContext(Dispatchers.IO) {
@@ -251,7 +255,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     val result = try {
                         s to load(s, showEarly = !showedCache)
                     } catch (e: Exception) {
-                        errors += "${s.name}: ${e.message ?: e.javaClass.simpleName}"
+                        errors += ListErrors.of(e).let { if (sources.size > 1) it.copy(text = s.name + ": " + it.text) else it }
                         null
                     }
                     expiry.await().onSuccess { expiries[s.id] = it }
@@ -272,7 +276,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             }
             _loading.value = false
             // With the saved copy on screen a failed update stays quiet: everything still works.
-            if (errors.isNotEmpty() && allItems.isEmpty()) _message.value = errors.joinToString("\n")
+            if (errors.isNotEmpty() && allItems.isEmpty()) _error.value = errors.first()
+            else if (errors.isEmpty() && loaded.isNotEmpty() && allItems.isEmpty()) _error.value = ListErrors.empty
             if (loaded.isEmpty()) return@launch
             loadGuide(loaded)
         }
@@ -437,10 +442,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         _profiles.value = store.profiles()
         _profileId.value = store.currentProfileId()
         _favorites.value = store.favorites()
+        _recentSearches.value = store.recentSearches()
         _hidden.value = store.hiddenSections()
         _teams.value = store.teams()
         lockAdult()
-        _message.value = null
+        _error.value = null
         _loading.value = false
         reloadProgress()
     }
@@ -471,6 +477,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         store.setCurrentProfile(id)
         _profileId.value = id
         _favorites.value = store.favorites()
+        _recentSearches.value = store.recentSearches()
         _hidden.value = store.hiddenSections()
         _teams.value = store.teams()
         reloadProgress()
@@ -583,6 +590,49 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
         if (loaded.all { it.second.isFailure }) throw loaded.first().second.exceptionOrNull()!!
         return SeriesGroups.combine(loaded.map { (season, result) -> season to result.getOrDefault(emptyList()) })
+    }
+
+    // ---------- Search ----------
+
+    private val _recentSearches = MutableStateFlow(store.recentSearches())
+    val recentSearches: StateFlow<List<String>> = _recentSearches
+
+    fun addRecentSearch(text: String) {
+        store.addRecentSearch(text)
+        _recentSearches.value = store.recentSearches()
+    }
+
+    fun clearRecentSearches() {
+        store.clearRecentSearches()
+        _recentSearches.value = emptyList()
+    }
+
+    // The titles of the list being searched, without case or accents, made once per list.
+    private var searchedList: List<Item>? = null
+    private var searchTitles: Array<String> = emptyArray()
+
+    /**
+     * The items whose title has every word of [query], ignoring case and accents ("sao paulo" finds
+     * "São Paulo"); titles that begin with the first word come first.
+     */
+    suspend fun search(query: String, limit: Int = 300): List<Item> = withContext(Dispatchers.Default) {
+        val words = Sports.norm(query).split(' ').filter { it.isNotEmpty() }
+        if (words.isEmpty()) return@withContext emptyList()
+        val list = _items.value
+        val titles = synchronized(this@AppViewModel) {
+            if (searchedList !== list) {
+                searchTitles = Array(list.size) { Sports.norm(list[it].name) }
+                searchedList = list
+            }
+            searchTitles
+        }
+        val first = ArrayList<Item>()
+        val rest = ArrayList<Item>()
+        for (i in list.indices) {
+            val t = titles[i]
+            if (words.all { it in t }) (if (t.startsWith(words[0])) first else rest) += list[i]
+        }
+        (first + rest).take(limit)
     }
 
     fun nowNext(item: Item, now: Long): Pair<Programme?, Programme?> {

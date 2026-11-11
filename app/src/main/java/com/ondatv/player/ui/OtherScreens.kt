@@ -40,6 +40,7 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Whatshot
 import androidx.compose.material3.AlertDialog
@@ -216,7 +217,7 @@ fun SeriesScreen(vm: AppViewModel, key: String, play: (PlayRequest) -> Unit, onB
     Box(Modifier.fillMaxSize().background(Onda.heroBg)) {
         LazyColumn(Modifier.fillMaxSize().focusRequester(listFocus).focusGroup()) {
             item {
-                Box(Modifier.fillMaxWidth().aspectRatio(1.1f)) {
+                Box(Modifier.fillMaxWidth().height(detailHeaderHeight(1.1f))) {
                     AsyncImage(
                         model = item?.backdrop ?: item?.logo, contentDescription = item?.name,
                         contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize(),
@@ -299,11 +300,18 @@ fun SeriesScreen(vm: AppViewModel, key: String, play: (PlayRequest) -> Unit, onB
 @Composable
 fun SearchScreen(vm: AppViewModel, play: (PlayRequest) -> Unit, openSeries: (String) -> Unit, onBack: () -> Unit) {
     val items by vm.items.collectAsStateWithLifecycle()
+    val recents by vm.recentSearches.collectAsStateWithLifecycle()
     var query by rememberSaveable { mutableStateOf("") }
-    val results = remember(items, query) {
-        val q = query.trim()
-        if (q.length < 2) emptyList() else items.filter { it.name.contains(q, ignoreCase = true) }.take(300)
+    val text = query.trim()
+    // The results with the text they were found for: the last ones stay while a new search runs,
+    // and "Nada encontrado" only shows once the search of the current text is over.
+    var found by remember { mutableStateOf("" to emptyList<Item>()) }
+    LaunchedEffect(text, items) {
+        found = if (text.length < 2) "" to emptyList() else text to vm.search(text)
     }
+    val results = found.second
+    // Opening a result keeps what was searched, unless it brought adult content.
+    val keepSearch: () -> Unit = { if (results.none { vm.isAdult(it) }) vm.addRecentSearch(text) }
     Column(Modifier.fillMaxSize().background(Onda.listBackground)) {
         CenterBar("Buscar", onBack)
         OutlinedTextField(
@@ -314,9 +322,36 @@ fun SearchScreen(vm: AppViewModel, play: (PlayRequest) -> Unit, openSeries: (Str
             shape = RoundedCornerShape(14.dp),
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).formField(),
         )
-        if (query.trim().length >= 2 && results.isEmpty()) EmptyState("Nada encontrado.")
+        if (text.length >= 2 && found.first == text && results.isEmpty()) EmptyState("Nada encontrado.")
         LazyColumn(Modifier.fillMaxSize().padding(top = 8.dp)) {
+            if (text.isEmpty() && recents.isNotEmpty()) {
+                item(key = "recent-title") {
+                    Row(
+                        Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            "Buscas recentes", color = Onda.textFaint, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.weight(1f),
+                        )
+                        TextButton(onClick = { vm.clearRecentSearches() }) { Text("Limpar", color = Onda.textDim) }
+                    }
+                }
+                items(recents, key = { "recent-$it" }) { r ->
+                    Row(
+                        Modifier.fillMaxWidth().clickable { query = r }.padding(horizontal = 16.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(Icons.Filled.History, null, tint = Onda.textFaint, modifier = Modifier.size(22.dp))
+                        Text(
+                            r, color = Color.White, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.padding(start = 16.dp),
+                        )
+                    }
+                }
+            }
             items(results, key = { it.key }) { item -> SearchRow(item) {
+                keepSearch()
                 if (item.kind == Kind.LIVE) play(item.toRequest()) else openSeries(item.key)
             } }
             item { BottomSpace() }

@@ -36,6 +36,7 @@ object Onda {
     val textDim = Color(0xD9FFFFFF)
     val textFaint = Color(0x80FFFFFF)
     val gold = Color(0xFFF5C518)
+    val accent = Color(0xFF179EF8)
 
     val listBackground = Brush.verticalGradient(
         0f to bgTop,

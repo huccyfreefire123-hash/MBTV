@@ -1,5 +1,9 @@
 package com.ondatv.player
 
+import androidx.media3.ui.AspectRatioFrameLayout
+import android.widget.LinearLayout
+import android.widget.ImageButton
+import android.view.View
 import android.app.PendingIntent
 import android.app.PictureInPictureParams
 import android.app.RemoteAction
@@ -114,6 +118,7 @@ class PlayerActivity : ComponentActivity() {
             setShowNextButton(false)
             setShowPreviousButton(false)
         }
+        addFitButton()
         val overlay = ComposeView(this).apply {
             setContent {
                 OndaTheme {
@@ -171,6 +176,32 @@ class PlayerActivity : ComponentActivity() {
                 if (++tick % 20 == 0) saveProgress()
             }
         }
+    }
+
+    /**
+     * "Ajuste de tela" next to the settings button of the controller: fit the picture, fill the
+     * screen (cropping the edges) or stretch it. The choice stays for the next videos.
+     */
+    private fun addFitButton() {
+        val row = view.findViewById<ViewGroup>(androidx.media3.ui.R.id.exo_basic_controls) ?: return
+        val gear = view.findViewById<View>(androidx.media3.ui.R.id.exo_settings)
+        val modes = intArrayOf(AspectRatioFrameLayout.RESIZE_MODE_FIT, AspectRatioFrameLayout.RESIZE_MODE_ZOOM, AspectRatioFrameLayout.RESIZE_MODE_FILL)
+        val names = arrayOf("Ajustar", "Preencher", "Esticar")
+        var mode = store.playerFit().coerceIn(0, modes.lastIndex)
+        view.resizeMode = modes[mode]
+        val button = ImageButton(this, null, 0, androidx.media3.ui.R.style.ExoStyledControls_Button_Bottom).apply {
+            setImageResource(R.drawable.ic_aspect_ratio)
+            contentDescription = "Ajuste de tela"
+            gear?.layoutParams?.let { layoutParams = LinearLayout.LayoutParams(it.width, it.height) }
+            setOnClickListener {
+                mode = (mode + 1) % modes.size
+                view.resizeMode = modes[mode]
+                store.setPlayerFit(mode)
+                Toast.makeText(this@PlayerActivity, "Tela: " + names[mode], Toast.LENGTH_SHORT).show()
+            }
+        }
+        val at = gear?.let { row.indexOfChild(it) }?.takeIf { it >= 0 } ?: row.childCount
+        row.addView(button, at)
     }
 
     override fun onNewIntent(intent: Intent) {

@@ -121,7 +121,7 @@ fun HomeScreen(
     play: (PlayRequest) -> Unit,
     openSeries: (String) -> Unit,
     openSearch: () -> Unit,
-    openSettings: () -> Unit,
+    openEditList: () -> Unit,
     openProfiles: () -> Unit,
     openSports: () -> Unit,
     openGrid: (Kind, String) -> Unit,
@@ -133,7 +133,8 @@ fun HomeScreen(
     val recentLive by vm.recentLive.collectAsStateWithLifecycle()
     val hidden by vm.hidden.collectAsStateWithLifecycle()
     val details by vm.details.collectAsStateWithLifecycle()
-    val message by vm.message.collectAsStateWithLifecycle()
+    val error by vm.error.collectAsStateWithLifecycle()
+    val loading by vm.loading.collectAsStateWithLifecycle()
     vm.epg.collectAsStateWithLifecycle().value // refresh when the guide arrives
     val now = rememberNow()
     var editing by remember { mutableStateOf(false) }
@@ -167,25 +168,21 @@ fun HomeScreen(
     Box(Modifier.fillMaxSize().background(Onda.heroBg)) {
         Column(Modifier.fillMaxSize().focusRequester(scrollFocus).focusGroup().verticalScroll(rememberScrollState())) {
             if (sources.isEmpty()) {
-                Spacer(Modifier.statusBarsPadding().height(120.dp))
-                EmptyState("Nenhuma lista ainda.\nAdicione sua lista M3U ou conta Xtream Codes para começar.")
-                Button(
-                    onClick = openSettings,
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black),
-                    modifier = Modifier.align(Alignment.CenterHorizontally),
-                ) { Text("Adicionar lista") }
+                // Nothing to show yet: the two ways to connect a list, right here.
+                WelcomeAddList(vm)
                 return@Column
             }
-            Hero(heroItems, details, open, topFocus)
+            // The first load of a big list takes a while: grey blocks show where the content will be.
+            if (items.isEmpty() && loading && error == null) SkeletonHome() else Hero(heroItems, details, open, topFocus)
             LoadingBar(vm)
-            message?.let { Text(it, color = Color(0xFFFF8A80), modifier = Modifier.padding(16.dp)) }
+            error?.let { ListErrorCard(it, onRetry = { vm.refresh() }, onEdit = openEditList) }
 
             if ("sports" !in hidden) SportsRow(vm, play, openSports)
 
             if ("resume" !in hidden && resume.isNotEmpty()) {
                 SectionHeader("Continue assistindo")
                 val w = posterWidth()
-                LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                LazyRow(contentPadding = rowPadding(), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                     items(resume, key = { it.key }) { p ->
                         Poster(
                             p.title, p.logo, w,
@@ -198,7 +195,7 @@ fun HomeScreen(
             }
             if ("live" !in hidden && liveRecent.isNotEmpty()) {
                 SectionHeader("Canais assistidos recentemente")
-                LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                LazyRow(contentPadding = rowPadding(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     items(liveRecent, key = { it.key }) { ch ->
                         LiveCard(ch, vm.nowNext(ch, now).first, now) { play(ch.toRequest()) }
                     }
@@ -280,10 +277,13 @@ fun BrowseScreen(
     openSearch: () -> Unit,
     openCategories: () -> Unit,
     openGrid: (String) -> Unit,
+    openEditList: () -> Unit,
 ) {
     val items by vm.items.collectAsStateWithLifecycle()
     val favorites by vm.favorites.collectAsStateWithLifecycle()
     val details by vm.details.collectAsStateWithLifecycle()
+    val error by vm.error.collectAsStateWithLifecycle()
+    val loading by vm.loading.collectAsStateWithLifecycle()
     var menu by remember { mutableStateOf(false) }
 
     // Banner and rows leave adult content out; it is reached through its category, behind the PIN.
@@ -308,9 +308,13 @@ fun BrowseScreen(
 
     Box(Modifier.fillMaxSize().background(Onda.heroBg)) {
         Column(Modifier.fillMaxSize().focusRequester(scrollFocus).focusGroup().verticalScroll(rememberScrollState())) {
-            Hero(heroItems, details, open, topFocus)
+            if (list.isEmpty() && loading && error == null) SkeletonHome() else Hero(heroItems, details, open, topFocus)
             LoadingBar(vm)
-            if (list.isEmpty()) EmptyState("Nenhum conteúdo aqui ainda.")
+            when {
+                list.isEmpty() && loading && error == null -> Unit
+                list.isEmpty() && error != null -> ListErrorCard(error!!, onRetry = { vm.refresh() }, onEdit = openEditList)
+                list.isEmpty() -> EmptyState("Nenhum conteúdo aqui ainda.")
+            }
             if (hot.isNotEmpty()) {
                 SectionHeader("$noun em Alta", onMore = { openGrid(G_RELEASES) })
                 PosterRow(hot, ranked = true, onClick = open)

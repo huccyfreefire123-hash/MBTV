@@ -1,5 +1,20 @@
 package com.ondatv.player.ui
 
+import androidx.compose.animation.core.animateFloat
+import com.tensei.ytxtube.TvMode
+import androidx.compose.ui.zIndex
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.foundation.lazy.items
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -138,6 +153,68 @@ fun Modifier.formField(): Modifier {
             else -> false
         }
     }
+}
+
+/**
+ * On a TV the card with the focus grows a little, with a soft animation, as streaming apps do.
+ * Phones and tablets without a remote are left as they are.
+ */
+@Composable
+fun Modifier.tvFocusScale(focused: Boolean, scale: Float = 1.06f): Modifier {
+    if (!TvMode.isTv) return this
+    val s by animateFloatAsState(if (focused) scale else 1f, tween(160), label = "focusScale")
+    return this.zIndex(if (focused) 1f else 0f).graphicsLayer {
+        scaleX = s
+        scaleY = s
+    }
+}
+
+/**
+ * Height of the picture at the top of a detail page: the phone's proportion, but never more than
+ * half the screen, so on a TV (wide and short) the list below it is in view and the remote reaches it.
+ */
+@Composable
+fun detailHeaderHeight(ratio: Float): Dp {
+    val c = LocalConfiguration.current
+    return minOf(c.screenWidthDp / ratio, c.screenHeightDp * 0.5f).dp
+}
+
+/** Padding of a row of cards: on a TV also above and below, room for the focused card to grow. */
+fun rowPadding(): PaddingValues = PaddingValues(horizontal = 16.dp, vertical = if (TvMode.isTv) 12.dp else 0.dp)
+
+/** A grey block that pulses softly: stands in for a picture or a list while it loads. */
+@Composable
+fun Modifier.skeleton(): Modifier {
+    val pulse = rememberInfiniteTransition(label = "skeleton").animateFloat(
+        0f, 1f, infiniteRepeatable(tween(900, easing = LinearEasing), RepeatMode.Reverse), label = "skeletonPulse",
+    )
+    // Read while drawing, so the pulse redraws the block without recomposing anything.
+    return this.drawBehind { drawRect(lerp(Color(0xFF141414), Color(0xFF2C2C2C), pulse.value)) }
+}
+
+/** A row of grey posters under a grey title, while the list loads for the first time. */
+@Composable
+fun SkeletonRow() {
+    val width = posterWidth()
+    Box(
+        Modifier.padding(start = 16.dp, top = 22.dp, bottom = 10.dp).size(width = 150.dp, height = 18.dp)
+            .clip(RoundedCornerShape(6.dp)).skeleton(),
+    )
+    LazyRow(
+        userScrollEnabled = false, contentPadding = PaddingValues(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        items(6) { Box(Modifier.width(width).aspectRatio(2f / 3f).clip(RoundedCornerShape(10.dp)).skeleton()) }
+    }
+}
+
+/** A tab's first load: a grey banner and two grey rows where the content will be. */
+@Composable
+fun SkeletonHome() {
+    val config = LocalConfiguration.current
+    val height = (config.screenHeightDp * 0.57f).coerceIn(360f, config.screenWidthDp * 1.4f).dp
+    Box(Modifier.fillMaxWidth().height(height).skeleton())
+    repeat(2) { SkeletonRow() }
 }
 
 // ---------- Frosted controls ----------
@@ -324,15 +401,18 @@ fun Poster(
 ) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
-    Column(Modifier.width(width).clickable(interactionSource = interaction, indication = null, onClick = onClick), horizontalAlignment = Alignment.CenterHorizontally) {
+    // Grey and pulsing until the picture arrives; without a picture (or when it fails) the title's initials show.
+    var loading by remember(image) { mutableStateOf(!image.isNullOrBlank()) }
+    Column(Modifier.width(width).tvFocusScale(focused).clickable(interactionSource = interaction, indication = null, onClick = onClick), horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
             Modifier.fillMaxWidth().aspectRatio(2f / 3f).clip(RoundedCornerShape(10.dp)).background(Onda.card)
                 .then(if (focused) Modifier.border(3.dp, Color.White, RoundedCornerShape(10.dp)) else Modifier),
         ) {
-            Initials(title, Modifier.align(Alignment.Center), size = 28)
+            if (loading) Box(Modifier.fillMaxSize().skeleton()) else Initials(title, Modifier.align(Alignment.Center), size = 28)
             AsyncImage(
                 model = image, contentDescription = title,
                 contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize(),
+                onSuccess = { loading = false }, onError = { loading = false },
             )
             if (rank != null) {
                 Text(
@@ -426,7 +506,7 @@ fun EpisodeRow(number: Int, title: String, plot: String?, image: String?, progre
 @Composable
 fun PosterRow(items: List<Item>, ranked: Boolean = false, onClick: (Item) -> Unit) {
     val width = posterWidth()
-    LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    LazyRow(contentPadding = rowPadding(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         itemsIndexed(items, key = { _, it -> it.key }) { i, item ->
             Poster(item.name, item.logo, width, { onClick(item) }, rank = if (ranked) i + 1 else null, rating = item.rating)
         }
@@ -441,7 +521,7 @@ fun fraction(p: Programme, now: Long): Float =
 fun LiveCard(item: Item, current: Programme?, now: Long, onClick: () -> Unit) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
-    Column(Modifier.width(liveCardWidth()).clickable(interactionSource = interaction, indication = null, onClick = onClick)) {
+    Column(Modifier.width(liveCardWidth()).tvFocusScale(focused).clickable(interactionSource = interaction, indication = null, onClick = onClick)) {
         Box(
             Modifier.fillMaxWidth().aspectRatio(1.42f).clip(RoundedCornerShape(12.dp)).background(Onda.card)
                 .then(if (focused) Modifier.border(3.dp, Color.White, RoundedCornerShape(12.dp)) else Modifier),
